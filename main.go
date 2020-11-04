@@ -4,7 +4,6 @@ import (
 	"BIGWVoting/p2p"
 	"fmt"
 	"net"
-	"os"
 
 	upnp "github.com/huin/goupnp/dcps/internetgateway2"
 )
@@ -12,7 +11,7 @@ import (
 func main() {
 	parseCommandline()
 
-	if flagShouldUseUPNP {
+	if !flagNoUPNP {
 		clients, _, err := upnp.NewWANIPConnection1Clients()
 		if err != nil {
 			panic(err)
@@ -81,7 +80,7 @@ func main() {
 
 	p2p.Setup()
 
-	newPeer, err := p2p.StartConnection(os.Args[2], os.Args[1])
+	newPeer, err := p2p.StartConnection(fmt.Sprintf("%v:%v", flagIntermediateIP, flagIntermediatePort), flagPeerIP)
 	if err != nil {
 		panic(err)
 	}
