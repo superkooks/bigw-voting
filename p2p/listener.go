@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	"fmt"
+	"bigw-voting/ui"
 	"net"
 	"strings"
 	"time"
@@ -30,7 +30,7 @@ func listener() {
 			}
 
 			if !shouldNotAdd {
-				fmt.Printf("Adding %v to unconnected list\n", replyTo.String())
+				ui.Infof("Adding %v to unconnected list\n", replyTo.String())
 				unconnectedPeers = append(unconnectedPeers, replyTo)
 			}
 		}
@@ -58,9 +58,9 @@ func listener() {
 					panic(err)
 				}
 
-				fmt.Printf("Recieved a connection attempt from %v\n", replyTo.String())
+				ui.Infof("Recieved a connection attempt from %v\n", replyTo.String())
 			} else {
-				fmt.Println("Recieved connection attempt from unknown peer, not responding")
+				ui.Warnln("Recieved connection attempt from unknown peer, not responding")
 			}
 			continue
 		}
@@ -68,7 +68,7 @@ func listener() {
 		// Check to see whether it our connection has been established
 		if string(buf[:n]) == "Established" {
 			p.Established = true
-			fmt.Printf("Established new connection with %v\n", p.PeerAddress.String())
+			ui.Infof("Established new connection with %v\n", p.PeerAddress.String())
 			continue
 		}
 
@@ -81,14 +81,14 @@ func listener() {
 
 		// Start parsing normal packets
 		if p == nil {
-			fmt.Println("Recieved packet from unknown peer")
+			ui.Warnln("Recieved packet from unknown peer")
 			continue
 		}
 
 		msg := new(Message)
 		msg.Deserialize(buf[:n])
 		if msg.Ack {
-			fmt.Printf("Received ack for seq. number: %v\n", msg.SequenceNumber)
+			ui.Infof("Received ack for seq. number: %v\n", msg.SequenceNumber)
 			for k, unacked := range p.unackedMessages {
 				if unacked.SequenceNumber == msg.SequenceNumber {
 					p.MaxRTT = 2 * time.Now().Sub(unacked.sentAt)
@@ -99,7 +99,7 @@ func listener() {
 			continue
 		}
 
-		fmt.Printf("Acking seq. number: %v\n", msg.SequenceNumber)
+		ui.Infof("Acking seq. number: %v\n", msg.SequenceNumber)
 		_, err = port.WriteToUDP((&Message{Data: []byte{}, SequenceNumber: msg.SequenceNumber, Ack: true}).Serialize(), replyTo)
 		if err != nil {
 			panic(err)

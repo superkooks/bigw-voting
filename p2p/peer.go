@@ -1,8 +1,8 @@
 package p2p
 
 import (
+	"bigw-voting/ui"
 	"errors"
-	"fmt"
 	"net"
 	"time"
 )
@@ -22,13 +22,13 @@ var peers []*Peer
 
 // StartConnection initiates a connection to a new peer. It requires an intermediate as well as an IP
 func StartConnection(intermediate string, newPeerIPString string) (*Peer, error) {
-	fmt.Println("Beginning new connection")
+	ui.Infoln("Beginning new connection")
 
 	intermediateAddr, err := net.ResolveUDPAddr("udp4", intermediate)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Connecting to intermediate", intermediateAddr.String())
+	ui.Infoln("Connecting to intermediate", intermediateAddr.String())
 
 	newPeerIP, err := net.ResolveIPAddr("ip4", newPeerIPString)
 	if err != nil {
@@ -70,7 +70,7 @@ func StartConnection(intermediate string, newPeerIPString string) (*Peer, error)
 
 	for i := 0; i < 5; i++ {
 		if !newPeer.Established {
-			fmt.Printf("Sending connection attempt #%v to %v\n", i, newPeer.PeerAddress.String())
+			ui.Infof("Sending connection attempt #%v to %v\n", i, newPeer.PeerAddress.String())
 
 			_, err := port.WriteToUDP([]byte("Connection Attempt"), newPeer.PeerAddress)
 			if err != nil {
@@ -94,7 +94,7 @@ func (p *Peer) SendMessage(msg []byte) error {
 	p.unackedMessages = append(p.unackedMessages, newMessage)
 	time.AfterFunc(p.MaxRTT, p.retransmission)
 
-	fmt.Printf("Sending message with seq. number: %v\n", p.latestSeqNumber)
+	ui.Infof("Sending message with seq. number: %v\n", p.latestSeqNumber)
 	_, err := port.WriteToUDP(newMessage.Serialize(), p.PeerAddress)
 	if err != nil {
 		return err
@@ -113,7 +113,7 @@ func (p *Peer) retransmission() {
 			time.AfterFunc(p.MaxRTT, p.retransmission)
 
 			newPacket := packet.Serialize()
-			fmt.Printf("Retransmitting seq. number: %v\n", p.latestSeqNumber)
+			ui.Infof("Retransmitting seq. number: %v\n", p.latestSeqNumber)
 			_, err := port.WriteToUDP(newPacket, p.PeerAddress)
 			if err != nil {
 				panic(err)

@@ -1,6 +1,6 @@
 *.exe
 *.log
-BIGWVoting
+bigw-voting
 *.tfstate*
 .terraform/*
 *.tfvars
