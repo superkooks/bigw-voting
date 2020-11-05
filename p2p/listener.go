@@ -51,12 +51,17 @@ func listener() {
 
 		// Check for connection setup messages
 		if string(buf[:n]) == "Connection Attempt" {
-			_, err = port.WriteToUDP([]byte("Established"), replyTo)
-			if err != nil {
-				panic(err)
-			}
+			// Don't respond to peers we haven't started a connection with
+			if p != nil {
+				_, err = port.WriteToUDP([]byte("Established"), replyTo)
+				if err != nil {
+					panic(err)
+				}
 
-			fmt.Printf("Recieved a connection attempt from %v\n", replyTo.String())
+				fmt.Printf("Recieved a connection attempt from %v\n", replyTo.String())
+			} else {
+				fmt.Println("Recieved connection attempt from unknown peer, not responding")
+			}
 			continue
 		}
 
@@ -75,6 +80,11 @@ func listener() {
 		}
 
 		// Start parsing normal packets
+		if p == nil {
+			fmt.Println("Recieved packet from unknown peer")
+			continue
+		}
+
 		msg := new(Message)
 		msg.Deserialize(buf[:n])
 		if msg.Ack {
