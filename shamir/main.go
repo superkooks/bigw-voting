@@ -1,6 +1,7 @@
 package shamir
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -12,7 +13,7 @@ var (
 )
 
 // Invert number in field n using the extended euclidean algorithm
-func extendedEuclideanInverse(a, n int) int {
+func extendedEuclideanInverse(a, n int) (int, error) {
 	t, newT := 0, 1
 	r, newR := n, int(math.Abs(float64(a)))
 
@@ -23,23 +24,27 @@ func extendedEuclideanInverse(a, n int) int {
 	}
 
 	if r > 1 {
-		panic("a is not invertible")
+		return 0, errors.New("a is not invertible")
 	}
 
 	if t < 0 {
 		t = t + n
 	}
 
-	return t
+	return t, nil
 }
 
-func divideInField(a, b int) int {
-	inverseB := extendedEuclideanInverse(b, fieldSize)
+func divideInField(a, b int) (int, error) {
+	inverseB, err := extendedEuclideanInverse(b, fieldSize)
+	if err != nil {
+		return 0, err
+	}
 
 	if b < 0 {
 		inverseB *= -1
 	}
-	return ((a % fieldSize) * ((inverseB % fieldSize) % fieldSize)) % fieldSize
+
+	return ((a % fieldSize) * ((inverseB % fieldSize) % fieldSize)) % fieldSize, nil
 }
 
 func lagrangeInterpolate(x int, xValues []int, yValues []int) (int, error) {
@@ -68,7 +73,12 @@ func lagrangeInterpolate(x int, xValues []int, yValues []int) (int, error) {
 			denominator *= val
 		}
 
-		sum = (sum + int(divideInField(numerator, denominator))*yValues[j]) % fieldSize
+		div, err := divideInField(numerator, denominator)
+		if err != nil {
+			return 0, nil
+		}
+
+		sum = (sum + int(div)*yValues[j]) % fieldSize
 	}
 
 	return (sum + fieldSize) % fieldSize, nil

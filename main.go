@@ -89,7 +89,7 @@ func main() {
 
 	newPeer, err := p2p.StartConnection(fmt.Sprintf("%v:%v", flagIntermediateIP, flagIntermediatePort), flagPeerIP)
 	if err != nil {
-		panic(err)
+		ui.Errorln(err)
 	}
 
 	newPeer.SendMessage([]byte("Hello world!"))
