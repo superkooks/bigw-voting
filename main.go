@@ -1,7 +1,7 @@
 package main
 
 import (
-	"BIGWVoting/p2p"
+	"bigw-voting/p2p"
 	"fmt"
 	"net"
 
@@ -22,7 +22,7 @@ func main() {
 		}
 
 		if len(clients) < 1 {
-			fmt.Println("Did not detect any gateway devices, starting without intermediate server")
+			fmt.Println("Did not detect any gateway devices, if you are behind a NAT, you cannot act as an intermediate")
 		}
 
 		if len(clients) == 1 {
@@ -77,6 +77,14 @@ func main() {
 			fmt.Printf("Starting intermediate server at external IP: %v:42069\n", remoteIP)
 		}
 	}
+
+	// go ui.Start()
+
+	// time.Sleep(100 * time.Millisecond)
+	// ui.NewVote([]string{"Lenin", "Stalin", "Krushchev", "Brezhnev"}, ui.SubmitVotes)
+
+	// time.Sleep(5 * time.Second)
+	// ui.Quit()
 
 	p2p.Setup()
 
