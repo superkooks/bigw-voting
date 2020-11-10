@@ -6,12 +6,12 @@ var commands map[string]func([]string)
 
 // RegisterAll registers all the commands present using RegisterCommand
 func RegisterAll() {
-
+	RegisterCommand("connect", CommandConnect)
 }
 
 // RegisterCommand takes a name and a callback
 func RegisterCommand(name string, cmd func([]string)) {
-
+	commands[name] = cmd
 }
 
 // Parse parses a command and calls any callbacks
