@@ -65,7 +65,8 @@ resource "digitalocean_droplet" "bigwpeer" {
             "mkdir src",
             "cd src",
             "git clone https://github.com/SuperKooks/bigw-voting.git",
-            "go mod download"
+            "cd bigw-voting",
+            "go mod download all"
         ]
     }
 }
