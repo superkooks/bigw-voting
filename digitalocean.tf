@@ -11,6 +11,8 @@ variable "do_token" {}
 
 variable "ssh_key_path" {}
 
+variable "vm_count" {}
+
 provider "digitalocean" {
   token = var.do_token
 }
@@ -25,7 +27,7 @@ data "digitalocean_ssh_key" "Vetinari" {
 
 
 resource "digitalocean_droplet" "bigwpeer" {
-    count = 2
+    count = var.vm_count
 
     image = "ubuntu-20-04-x64"
     name = "bigwpeer-${count.index}"
@@ -41,17 +43,13 @@ resource "digitalocean_droplet" "bigwpeer" {
         host = self.ipv4_address
         user = "root"
         type = "ssh"
-        private_key = file(var.ssh_key_path)
+        agent = true
         timeout = "2m"
     }
 
     provisioner "remote-exec" {
         inline = [
             "export PATH=$PATH:/usr/bin",
-            
-            # Install git
-            "sudo apt-get update",
-            "sudo apt-get -y install git",
 
             # Install golang
             "wget https://golang.org/dl/go1.15.3.linux-amd64.tar.gz",
@@ -67,19 +65,11 @@ resource "digitalocean_droplet" "bigwpeer" {
             "mkdir src",
             "cd src",
             "git clone https://github.com/SuperKooks/bigw-voting.git",
-            "go get github.com/huin/goupnp/dcps/internetgateway2",
-            "go get github.com/spf13/pflag",
-            "go get github.com/gdamore/tcell",
-            "go get gitlab.com/tslocum/cview"
+            "go mod download"
         ]
     }
 }
 
-output "vm_ip0" {
-    value = digitalocean_droplet.bigwpeer[0].ipv4_address
+output "ip" {
+    value = join("\n", digitalocean_droplet.bigwpeer[*].ipv4_address)
 }
-
-output "vm_ip1" {
-    value = digitalocean_droplet.bigwpeer[1].ipv4_address
-}
-

@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	"bigw-voting/ui"
+	"bigw-voting/util"
 	"net"
 )
 
@@ -20,6 +20,6 @@ func Setup() {
 		panic(err)
 	}
 
-	ui.Infoln("Starting peer-to-peer listener")
+	util.Infoln("Starting peer-to-peer listener")
 	go listener()
 }

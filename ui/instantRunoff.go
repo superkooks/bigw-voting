@@ -6,7 +6,7 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/gdamore/tcell"
+	tcell "github.com/gdamore/tcell/v2"
 	"gitlab.com/tslocum/cview"
 )
 
@@ -170,10 +170,11 @@ func (i *instantRunoff) MouseHandler() func(action cview.MouseAction, event *tce
 			// Allow clicking on submit button
 			if y-innerY == len(i.allCandidates)+1 {
 				i.cursor = len(i.allCandidates)
+				i.currentStatus = ""
 
 				voteMap := make(map[string]int)
 				usedTransfers := make([]int, len(i.votes)+1)
-				if len(voteMap) < len(i.allCandidates) {
+				if len(i.votes) < len(i.allCandidates) {
 					i.currentStatus = "Please number every candidate"
 					return true, capture
 				}

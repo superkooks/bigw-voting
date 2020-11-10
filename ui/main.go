@@ -1,15 +1,16 @@
 package ui
 
 import (
-	"fmt"
-	"log"
+	"bigw-voting/util"
 
-	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/v2"
 	"gitlab.com/tslocum/cview"
 )
 
 var app *cview.Application
 var ir *instantRunoff
+var consoleInput *cview.InputField
+var consoleOutput *cview.TextView
 
 // Start starts up the UI
 func Start() {
@@ -49,57 +50,8 @@ func ClearVote() {
 // SubmitVotes prints the votes
 func SubmitVotes(votes map[string]int) {
 	for k, v := range votes {
-		Infof("%v: %v", k, v)
+		util.Infof("%v: %v", k, v)
 	}
-}
-
-func consoleBox() *cview.TextView {
-	t := cview.NewTextView()
-	t.SetBorder(true)
-	t.SetTitle("Console")
-	t.SetBorderColor(tcell.ColorLime)
-	t.SetTitleColor(tcell.ColorLime)
-	t.SetTextColor(tcell.ColorLime)
-	t.SetDynamicColors(true)
-	t.SetChangedFunc(func() { app.QueueUpdateDraw(func() {}) })
-
-	log.SetOutput(t)
-	log.SetFlags(log.Ltime)
-
-	return t
-}
-
-// Errorf prints a formatted error to the ui console
-func Errorf(fmtString string, fmtArgs ...interface{}) {
-	log.Printf("[red]error:[lime] %v", fmt.Sprintf(fmtString, fmtArgs...))
-}
-
-// Errorln prints text to the ui console
-func Errorln(msg ...interface{}) {
-	v := append([]interface{}{"[red]error:[lime]"}, msg...)
-	log.Println(v...)
-}
-
-// Warnf prints a formatted warning to the ui console
-func Warnf(fmtString string, fmtArgs ...interface{}) {
-	log.Printf("[orange]warn:[lime] %v", fmt.Sprintf(fmtString, fmtArgs...))
-}
-
-// Warnln prints text to the ui console
-func Warnln(msg ...interface{}) {
-	v := append([]interface{}{"[orange]warn:[lime]"}, msg...)
-	log.Println(v...)
-}
-
-// Infof prints a formatted Infoing to the ui console
-func Infof(fmtString string, fmtArgs ...interface{}) {
-	log.Printf("[lime] %v", fmt.Sprintf(fmtString, fmtArgs...))
-}
-
-// Infoln prints text to the ui console
-func Infoln(msg ...interface{}) {
-	v := append([]interface{}{"[lime]"}, msg...)
-	log.Println(v...)
 }
 
 func demoBox(title string) *cview.Box {

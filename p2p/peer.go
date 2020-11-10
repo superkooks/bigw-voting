@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	"bigw-voting/ui"
+	"bigw-voting/util"
 	"errors"
 	"net"
 	"time"
@@ -20,15 +20,15 @@ type Peer struct {
 
 var peers []*Peer
 
-// StartConnection initiates a connection to a new peer. It requires an intermediate as well as an IP
+// StartConnection initiates a connection to a new peer. It reqbigwres an intermediate as well as an IP
 func StartConnection(intermediate string, newPeerIPString string) (*Peer, error) {
-	ui.Infoln("Beginning new connection")
+	util.Infoln("Beginning new connection")
 
 	intermediateAddr, err := net.ResolveUDPAddr("udp4", intermediate)
 	if err != nil {
 		return nil, err
 	}
-	ui.Infoln("Connecting to intermediate", intermediateAddr.String())
+	util.Infoln("Connecting to intermediate", intermediateAddr.String())
 
 	newPeerIP, err := net.ResolveIPAddr("ip4", newPeerIPString)
 	if err != nil {
@@ -70,7 +70,7 @@ func StartConnection(intermediate string, newPeerIPString string) (*Peer, error)
 
 	for i := 0; i < 5; i++ {
 		if !newPeer.Established {
-			ui.Infof("Sending connection attempt #%v to %v\n", i, newPeer.PeerAddress.String())
+			util.Infof("Sending connection attempt #%v to %v\n", i, newPeer.PeerAddress.String())
 
 			_, err := port.WriteToUDP([]byte("Connection Attempt"), newPeer.PeerAddress)
 			if err != nil {
@@ -94,7 +94,7 @@ func (p *Peer) SendMessage(msg []byte) error {
 	p.unackedMessages = append(p.unackedMessages, newMessage)
 	time.AfterFunc(p.MaxRTT, p.retransmission)
 
-	ui.Infof("Sending message with seq. number: %v\n", p.latestSeqNumber)
+	util.Infof("Sending message with seq. number: %v\n", p.latestSeqNumber)
 	_, err := port.WriteToUDP(newMessage.Serialize(), p.PeerAddress)
 	if err != nil {
 		return err
@@ -113,7 +113,7 @@ func (p *Peer) retransmission() {
 			time.AfterFunc(p.MaxRTT, p.retransmission)
 
 			newPacket := packet.Serialize()
-			ui.Infof("Retransmitting seq. number: %v\n", p.latestSeqNumber)
+			util.Infof("Retransmitting seq. number: %v\n", p.latestSeqNumber)
 			_, err := port.WriteToUDP(newPacket, p.PeerAddress)
 			if err != nil {
 				panic(err)

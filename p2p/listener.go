@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	"bigw-voting/ui"
+	"bigw-voting/util"
 	"net"
 	"strings"
 	"time"
@@ -30,7 +30,7 @@ func listener() {
 			}
 
 			if !shouldNotAdd {
-				ui.Infof("Adding %v to unconnected list\n", replyTo.String())
+				util.Infof("Adding %v to unconnected list\n", replyTo.String())
 				unconnectedPeers = append(unconnectedPeers, replyTo)
 			}
 		}
@@ -58,9 +58,9 @@ func listener() {
 					panic(err)
 				}
 
-				ui.Infof("Recieved a connection attempt from %v\n", replyTo.String())
+				util.Infof("Recieved a connection attempt from %v\n", replyTo.String())
 			} else {
-				ui.Warnln("Recieved connection attempt from unknown peer, not responding")
+				util.Warnln("Recieved connection attempt from unknown peer, not responding")
 			}
 			continue
 		}
@@ -68,7 +68,7 @@ func listener() {
 		// Check to see whether it our connection has been established
 		if string(buf[:n]) == "Established" {
 			p.Established = true
-			ui.Infof("Established new connection with %v\n", p.PeerAddress.String())
+			util.Infof("Established new connection with %v\n", p.PeerAddress.String())
 			continue
 		}
 
@@ -81,14 +81,14 @@ func listener() {
 
 		// Start parsing normal packets
 		if p == nil {
-			ui.Warnln("Recieved packet from unknown peer")
+			util.Warnln("Recieved packet from unknown peer")
 			continue
 		}
 
 		msg := new(Message)
 		msg.Deserialize(buf[:n])
 		if msg.Ack {
-			ui.Infof("Received ack for seq. number: %v\n", msg.SequenceNumber)
+			util.Infof("Received ack for seq. number: %v\n", msg.SequenceNumber)
 			for k, unacked := range p.unackedMessages {
 				if unacked.SequenceNumber == msg.SequenceNumber {
 					p.MaxRTT = 2 * time.Now().Sub(unacked.sentAt)
@@ -99,7 +99,7 @@ func listener() {
 			continue
 		}
 
-		ui.Infof("Acking seq. number: %v\n", msg.SequenceNumber)
+		util.Infof("Acking seq. number: %v\n", msg.SequenceNumber)
 		_, err = port.WriteToUDP((&Message{Data: []byte{}, SequenceNumber: msg.SequenceNumber, Ack: true}).Serialize(), replyTo)
 		if err != nil {
 			panic(err)
