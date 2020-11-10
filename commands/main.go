@@ -1,8 +1,10 @@
 package commands
 
-import "strings"
+import (
+	"strings"
+)
 
-var commands map[string]func([]string)
+var commands = make(map[string]func([]string))
 
 // RegisterAll registers all the commands present using RegisterCommand
 func RegisterAll() {
@@ -19,7 +21,7 @@ func Parse(cmd string) {
 	split := strings.Split(cmd, " ")
 	for k, v := range commands {
 		if split[0] == k {
-			v(split[1:])
+			go v(split[1:])
 			return
 		}
 	}

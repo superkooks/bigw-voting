@@ -15,15 +15,20 @@ func CommandConnect(args []string) {
 	intPort := flagSet.IntP("intermediatePort", "o", 42069, "The UDP port of the intermediate to connect through")
 	peerIP := flagSet.StringP("peerIP", "p", "", "The IPv4 address of the peer to begin connecting with")
 
-	flagSet.Parse(args)
+	err := flagSet.Parse(args)
+	if err != nil {
+		util.Errorf("could not parse command: %v\n", err)
+	}
 
-	p, err := p2p.StartConnection(fmt.Sprintf("%v:%v", intIP, intPort), *peerIP)
+	p, err := p2p.StartConnection(fmt.Sprintf("%v:%v", *intIP, *intPort), *peerIP)
 	if err != nil {
 		util.Errorln(err)
+		return
 	}
 
 	err = p.SendMessage([]byte("What is up?"))
 	if err != nil {
 		util.Errorln(err)
+		return
 	}
 }

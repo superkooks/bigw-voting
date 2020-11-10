@@ -3,6 +3,7 @@ package p2p
 import (
 	"bigw-voting/util"
 	"errors"
+	"fmt"
 	"net"
 	"time"
 )
@@ -26,13 +27,13 @@ func StartConnection(intermediate string, newPeerIPString string) (*Peer, error)
 
 	intermediateAddr, err := net.ResolveUDPAddr("udp4", intermediate)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not resolve intermediate udp: %v", err)
 	}
 	util.Infoln("Connecting to intermediate", intermediateAddr.String())
 
 	newPeerIP, err := net.ResolveIPAddr("ip4", newPeerIPString)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not resolve new peer ip: %v", err)
 	}
 
 	newPeer := &Peer{

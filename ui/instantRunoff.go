@@ -18,6 +18,7 @@ type instantRunoff struct {
 	votes         map[int]int
 	submitFunc    func(map[string]int)
 	currentStatus string
+	visible       bool
 
 	l sync.RWMutex
 }
@@ -51,39 +52,42 @@ func (i *instantRunoff) Draw(screen tcell.Screen) {
 	defer i.l.Unlock()
 
 	i.Box.Draw(screen)
-	x, y, width, height := i.GetInnerRect()
 
-	// Print the candidates with cursor and votes
-	for index, candidate := range i.allCandidates {
-		if index >= height {
-			break
+	if i.visible {
+		x, y, width, height := i.GetInnerRect()
+
+		// Print the candidates with cursor and votes
+		for index, candidate := range i.allCandidates {
+			if index >= height {
+				break
+			}
+
+			cursor := " "
+			if i.cursor == index {
+				cursor = ">"
+			}
+
+			transferrableVote := []byte(" ")
+			if transfer, ok := i.votes[index]; ok {
+				transferrableVote = strconv.AppendInt([]byte{}, int64(transfer), 10)
+			}
+
+			line := fmt.Sprintf("%v [%v] %v", cursor, string(transferrableVote), candidate)
+			cview.Print(screen, []byte(line), x, y+index, width, cview.AlignLeft, tcell.ColorLime)
 		}
 
-		cursor := " "
-		if i.cursor == index {
-			cursor = ">"
+		// Print submit button
+		buttonText := "<Submit>"
+		style := tcell.StyleDefault.Foreground(tcell.ColorLime)
+		if i.cursor == len(i.allCandidates) {
+			style = style.Background(tcell.ColorLime).Foreground(tcell.ColorBlack)
 		}
 
-		transferrableVote := []byte(" ")
-		if transfer, ok := i.votes[index]; ok {
-			transferrableVote = strconv.AppendInt([]byte{}, int64(transfer), 10)
-		}
+		cview.PrintStyle(screen, []byte(buttonText), x, y+len(i.allCandidates)+1, width, cview.AlignCenter, style)
 
-		line := fmt.Sprintf("%v [%v] %v", cursor, string(transferrableVote), candidate)
-		cview.Print(screen, []byte(line), x, y+index, width, cview.AlignLeft, tcell.ColorLime)
+		// Print the status message
+		cview.Print(screen, []byte(i.currentStatus), x, y+len(i.allCandidates)+2, width, cview.AlignCenter, tcell.ColorRed)
 	}
-
-	// Print submit button
-	buttonText := "<Submit>"
-	style := tcell.StyleDefault.Foreground(tcell.ColorLime)
-	if i.cursor == len(i.allCandidates) {
-		style = style.Background(tcell.ColorLime).Foreground(tcell.ColorBlack)
-	}
-
-	cview.PrintStyle(screen, []byte(buttonText), x, y+len(i.allCandidates)+1, width, cview.AlignCenter, style)
-
-	// Print the status message
-	cview.Print(screen, []byte(i.currentStatus), x, y+len(i.allCandidates)+2, width, cview.AlignCenter, tcell.ColorRed)
 }
 
 // InputHandler allows user to input things (duh)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bigw-voting/commands"
 	"bigw-voting/p2p"
 	"bigw-voting/ui"
 	"bigw-voting/util"
@@ -13,6 +14,7 @@ import (
 
 func main() {
 	parseCommandline()
+	commands.RegisterAll()
 
 	go ui.Start()
 
@@ -90,7 +92,8 @@ func main() {
 
 	newPeer, err := p2p.StartConnection(fmt.Sprintf("%v:%v", flagIntermediateIP, flagIntermediatePort), flagPeerIP)
 	if err != nil {
-		util.Errorln(err)
+		ui.Stop()
+		panic(err)
 	}
 
 	newPeer.SendMessage([]byte("Hello world!"))

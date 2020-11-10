@@ -18,7 +18,7 @@ func Start() {
 	app.EnableMouse(true)
 
 	ir = newInstantRunoff()
-	ir.SetVisible(false)
+	ir.visible = false
 
 	subFlex := cview.NewFlex()
 	subFlex.SetDirection(cview.FlexRow)
@@ -39,7 +39,7 @@ func Start() {
 // NewVote shows a new voting widget to allow voting in
 func NewVote(choices []string, callback func(map[string]int)) {
 	ir.SetupNewVote(choices, callback)
-	ir.SetVisible(true)
+	ir.visible = true
 }
 
 // ClearVote hides the voting widget
@@ -52,6 +52,11 @@ func SubmitVotes(votes map[string]int) {
 	for k, v := range votes {
 		util.Infof("%v: %v", k, v)
 	}
+}
+
+// Stop closes the application
+func Stop() {
+	app.Stop()
 }
 
 func demoBox(title string) *cview.Box {

@@ -36,13 +36,3 @@ func Infof(fmtString string, fmtArgs ...interface{}) {
 func Infoln(msg ...interface{}) {
 	log.Println(msg...)
 }
-
-// // Printf prints text without the time
-// func Printf(fmtString string, fmtArgs ...interface{}) {
-// 	ui.GetConsoleWriter().Write([]byte(fmt.Sprintf(fmtString, fmtArgs...)))
-// }
-
-// // Println prints text without the time
-// func Println(msg ...interface{}) {
-// 	ui.GetConsoleWriter().Write([]byte(fmt.Sprintln(msg...)))
-// }
