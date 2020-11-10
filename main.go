@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bigw-voting/p2p"
 	"bigw-voting/ui"
 	"bigw-voting/util"
+	"fmt"
 	"net"
 	"time"
 
@@ -84,15 +86,15 @@ func main() {
 		}
 	}
 
-	// p2p.Setup()
+	p2p.Setup()
 
-	// newPeer, err := p2p.StartConnection(fmt.Sprintf("%v:%v", flagIntermediateIP, flagIntermediatePort), flagPeerIP)
-	// if err != nil {
-	// 	util.Errorln(err)
-	// }
+	newPeer, err := p2p.StartConnection(fmt.Sprintf("%v:%v", flagIntermediateIP, flagIntermediatePort), flagPeerIP)
+	if err != nil {
+		util.Errorln(err)
+	}
 
-	// newPeer.SendMessage([]byte("Hello world!"))
-	// util.Infoln(string(<-newPeer.Messages))
+	newPeer.SendMessage([]byte("Hello world!"))
+	util.Infoln(string(<-newPeer.Messages))
 
 	finished := make(chan bool)
 	<-finished
