@@ -99,6 +99,6 @@ func main() {
 	newPeer.SendMessage([]byte("Hello world!"))
 
 	for {
-		util.Infoln(string(<-newPeer.Messages))
+		util.Infof("New Packet: %v\n", string(<-newPeer.Messages))
 	}
 }
