@@ -99,6 +99,13 @@ func main() {
 	newPeer.SendMessage([]byte("Hello world!"))
 
 	for {
-		util.Infof("New Packet: %v\n", string(<-newPeer.Messages))
+		for _, p := range p2p.GetAllPeers() {
+			select {
+			case m := <-p.Messages:
+				util.Infof("New Packet: %v\n", string(m))
+			default:
+
+			}
+		}
 	}
 }

@@ -154,3 +154,8 @@ func GossipPeers(intermediate string) {
 
 	BroadcastMessage([]byte(peersList))
 }
+
+// GetAllPeers returns the list of currently connected peers
+func GetAllPeers() []*Peer {
+	return peers
+}
