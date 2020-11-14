@@ -97,8 +97,8 @@ func main() {
 	}
 
 	newPeer.SendMessage([]byte("Hello world!"))
-	util.Infoln(string(<-newPeer.Messages))
 
-	finished := make(chan bool)
-	<-finished
+	for {
+		util.Infoln(string(<-newPeer.Messages))
+	}
 }

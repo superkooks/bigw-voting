@@ -99,13 +99,23 @@ func listener() {
 			continue
 		}
 
-		util.Infof("Acking seq. number: %v\n", msg.SequenceNumber)
-		_, err = port.WriteToUDP((&Message{Data: []byte{}, SequenceNumber: msg.SequenceNumber, Ack: true}).Serialize(), replyTo)
-		if err != nil {
-			panic(err)
+		// Discard duplicate packets
+		if msg.SequenceNumber <= p.latestSeqNumber {
+			continue
 		}
 
-		p.latestSeqNumber = msg.SequenceNumber
+		// Don't ack broadcast packets
+		if !msg.Broadcast {
+			util.Infof("Acking seq. number: %v\n", msg.SequenceNumber)
+			_, err = port.WriteToUDP((&Message{Data: []byte{}, SequenceNumber: msg.SequenceNumber, Ack: true}).Serialize(), replyTo)
+			if err != nil {
+				panic(err)
+			}
+
+			p.latestSeqNumber = msg.SequenceNumber
+		} else {
+			util.Infof("Recieved broadcast packet:")
+		}
 
 		p.Messages <- msg.Data
 	}

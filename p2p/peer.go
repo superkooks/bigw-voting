@@ -42,6 +42,7 @@ func StartConnection(intermediate string, newPeerIPString string) (*Peer, error)
 	}
 	peers = append(peers, newPeer)
 
+	// Retrieve external UDP address from the intermediate
 	for {
 		port.WriteToUDP([]byte("Unconnected Peers"), intermediateAddr)
 
@@ -69,6 +70,7 @@ func StartConnection(intermediate string, newPeerIPString string) (*Peer, error)
 		time.Sleep(1 * time.Second)
 	}
 
+	// Send connection attempts to the external UDP address of the new peer
 	for i := 0; i < 5; i++ {
 		if !newPeer.Established {
 			util.Infof("Sending connection attempt #%v to %v\n", i, newPeer.PeerAddress.String())
@@ -107,14 +109,17 @@ func (p *Peer) SendMessage(msg []byte) error {
 // retransmission is responsible for retransmitting lost packets
 func (p *Peer) retransmission() {
 	for _, packet := range p.unackedMessages {
+		// Should this packet have been acked by now?
 		if time.Now().After(packet.sentAt.Add(p.MaxRTT)) {
+			// Increase the peer's MaxRTT after losing packet
 			p.MaxRTT = time.Duration(float64(p.MaxRTT.Milliseconds())*1.75) * time.Millisecond
 
+			// Retransmit the packet and add to p.unacked with new sentAt
 			packet.sentAt = time.Now()
 			time.AfterFunc(p.MaxRTT, p.retransmission)
 
 			newPacket := packet.Serialize()
-			util.Infof("Retransmitting seq. number: %v\n", p.latestSeqNumber)
+			util.Warnf("Retransmitting seq. number: %v\n", p.latestSeqNumber)
 			_, err := port.WriteToUDP(newPacket, p.PeerAddress)
 			if err != nil {
 				panic(err)
@@ -124,6 +129,8 @@ func (p *Peer) retransmission() {
 }
 
 // BroadcastMessage sends a message to all peers, telling them to pass it on as well
+// Note: Broadcast messages are not acked.
+// Note: Peer receiving broadcasts should be able to handle duplicates
 func BroadcastMessage(msg []byte) error {
 	for _, p := range peers {
 		newMessage := p.NewMessage(msg, false, true)
