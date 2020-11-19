@@ -50,7 +50,7 @@ func divideInField(a, b int) (int, error) {
 
 func lagrangeInterpolate(x int, xValues []int, yValues []int) (int, error) {
 	if len(xValues) == 0 || len(xValues) != len(yValues) {
-		return 0, fmt.Errorf("x and y cannot be empty and must be equal lengths")
+		return 0, errors.New("x and y cannot be empty and must be equal lengths")
 	}
 
 	var sum int
@@ -108,7 +108,7 @@ func ConstructPoints(secret int, shares int, sufficientShares int) [][2]int {
 	rand.Seed(time.Now().UnixNano())
 	randomNumbers := make([]int, sufficientShares-1)
 	for i := 0; i < sufficientShares-1; i++ {
-		randomNumbers[i] = rand.Intn(int(FieldSize))
+		randomNumbers[i] = rand.Intn(int(FieldSize)-1) + 1
 	}
 
 	out := make([][2]int, shares)
