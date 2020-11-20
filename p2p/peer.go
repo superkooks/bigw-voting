@@ -159,3 +159,13 @@ func GossipPeers(intermediate string) {
 func GetAllPeers() []*Peer {
 	return peers
 }
+
+// GetAllPeerIPs returns a list of all IP addresses of the currently connected peers
+func GetAllPeerIPs() []string {
+	var out []string
+	for _, v := range peers {
+		out = append(out, v.PeerAddress.IP.String())
+	}
+
+	return out
+}

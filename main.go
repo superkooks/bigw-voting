@@ -21,6 +21,33 @@ func main() {
 	time.Sleep(100 * time.Millisecond)
 	ui.NewVote([]string{"Lenin", "Stalin", "Krushchev", "Brezhnev"}, ui.SubmitVotes)
 
+	// Find local IP for BGW as well as for UPNP mapping
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		panic(err)
+	}
+
+	var localIP string
+	for _, i := range ifaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			panic(err)
+		}
+
+		for _, addr := range addrs {
+			switch v := addr.(type) {
+			case *net.IPNet:
+				localIP = v.IP.String()
+			case *net.IPAddr:
+				localIP = v.IP.String()
+			}
+
+			break
+		}
+	}
+
+	externalIP := localIP
+
 	if !flagNoUPNP {
 		clients, _, err := upnp.NewWANIPConnection1Clients()
 		if err != nil {
@@ -37,31 +64,6 @@ func main() {
 
 		if len(clients) == 1 {
 			client := clients[0]
-
-			// Find local IP to map to
-			ifaces, err := net.Interfaces()
-			if err != nil {
-				panic(err)
-			}
-
-			var localIP string
-			for _, i := range ifaces {
-				addrs, err := i.Addrs()
-				if err != nil {
-					panic(err)
-				}
-
-				for _, addr := range addrs {
-					switch v := addr.(type) {
-					case *net.IPNet:
-						localIP = v.IP.String()
-					case *net.IPAddr:
-						localIP = v.IP.String()
-					}
-
-					break
-				}
-			}
 
 			util.Infof("Using local IP %v for port mapping\n", localIP)
 
@@ -80,11 +82,11 @@ func main() {
 			util.Infoln("Port mapping is established")
 
 			// Get external IP
-			remoteIP, err := client.GetExternalIPAddress()
+			externalIP, err = client.GetExternalIPAddress()
 			if err != nil {
 				panic(err)
 			}
-			util.Infof("Starting intermediate server at external IP: %v:42069\n", remoteIP)
+			util.Infof("Starting intermediate server at external IP: %v:42069\n", externalIP)
 		}
 	}
 

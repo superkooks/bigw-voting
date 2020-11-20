@@ -15,7 +15,7 @@ var (
 
 func parseCommandline() {
 	flag.StringVarP(&flagIntermediateIP, "intermediateIP", "i", "", "The IPv4 address of the intermediate to connect through")
-	flag.IntVarP(&flagIntermediatePort, "intermediatePort", "o", 42069, "The UDP port of the intermediate to connect through")
+	flag.IntVarP(&flagIntermediatePort, "intermediatePort", "o", 42069, "The UDP port of the intermediate to connect through, the default is 42069")
 	flag.StringVarP(&flagPeerIP, "peerIP", "p", "", "The IPv4 address of the peer to begin connecting with")
 
 	flag.BoolVar(&flagNoUPNP, "noUPNP", false, "Should the local intermediate server use UPNP port forwarding")
