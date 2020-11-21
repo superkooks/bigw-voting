@@ -2,6 +2,12 @@ package bgw
 
 import "bigw-voting/shamir"
 
+// Gate is a representation of a gate in the BGW protocol, it has inputs and outputs
+type Gate interface {
+	GetInputs() []Input
+	GetOutput() int
+}
+
 //
 // AdditionGate has two inputs and adds them together
 type AdditionGate struct {

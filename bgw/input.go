@@ -42,15 +42,6 @@ func NewRemoteShamirInput() *ShamirInput {
 	return &ShamirInput{}
 }
 
-// IsReady returns whether a ShamirInput is ready. Useful for remote
-func (s *ShamirInput) IsReady() bool {
-	if s.Point == 0 {
-		return false
-	}
-
-	return true
-}
-
 // AddPeerShare adds a peer's share to the input
 func (s *ShamirInput) AddPeerShare(share int) {
 	s.Point = share

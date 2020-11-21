@@ -4,6 +4,7 @@ import (
 	"bigw-voting/p2p"
 	"bigw-voting/util"
 	"fmt"
+	"log"
 
 	flag "github.com/spf13/pflag"
 )
@@ -12,8 +13,10 @@ import (
 func CommandConnect(args []string) {
 	flagSet := flag.NewFlagSet("connect", flag.ContinueOnError)
 	intIP := flagSet.StringP("intermediateIP", "i", "", "The IPv4 of the intermediate to conect through")
-	intPort := flagSet.IntP("intermediatePort", "o", 42069, "The UDP port of the intermediate to connect through")
+	intPort := flagSet.IntP("intermediatePort", "o", 42069, "The UDP port of the intermediate to connect through, the default is 42069")
 	peerIP := flagSet.StringP("peerIP", "p", "", "The IPv4 address of the peer to begin connecting with")
+
+	flagSet.SetOutput(log.Writer())
 
 	err := flagSet.Parse(args)
 	if err != nil {
