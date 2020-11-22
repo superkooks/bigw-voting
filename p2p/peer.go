@@ -156,6 +156,10 @@ func BroadcastMessage(msg []byte, maxBounces int8) error {
 
 // GossipPeers broadcasts our list of peers
 func GossipPeers(intermediate string) {
+	if intermediate == "127.0.0.1:42069" {
+		intermediate = externalIP + ":42069"
+	}
+
 	peersList := "Gossip " + intermediate + " "
 	for _, p := range peers {
 		peersList += p.PeerAddress.IP.String() + " "

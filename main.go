@@ -16,11 +16,10 @@ func main() {
 	parseCommandline()
 	commands.RegisterAll()
 
-	v := NewVotepackFromFile(flagVotepackFilename)
-
 	go ui.Start()
 
 	time.Sleep(100 * time.Millisecond)
+	v := NewVotepackFromFile(flagVotepackFilename)
 	ui.NewVote(v.Candidates, ui.SubmitVotes)
 
 	// Find local IP for BGW as well as for UPNP mapping
