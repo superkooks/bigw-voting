@@ -129,9 +129,13 @@ func listener() {
 			intermediate := msgSplit[1]
 
 			for _, gossiped := range msgSplit[2:] {
+				if gossiped == " " || gossiped == "" {
+					continue
+				}
+
 				var found bool
 				for _, connected := range GetAllPeerIPs() {
-					if connected == gossiped {
+					if connected == gossiped || externalIP == gossiped {
 						found = true
 						break
 					}

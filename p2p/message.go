@@ -31,7 +31,7 @@ func (p *Peer) NewMessage(data []byte, ack bool, broadcast bool) *Message {
 
 // Serialize returns the []byte representation of a message
 func (m *Message) Serialize() []byte {
-	headeredMsg := make([]byte, 10+len(m.Data))
+	headeredMsg := make([]byte, 11+len(m.Data))
 	binary.LittleEndian.PutUint64(headeredMsg, uint64(m.SequenceNumber))
 
 	if m.Ack {
