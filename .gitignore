@@ -4,3 +4,4 @@ bigw-voting
 *.tfstate*
 .terraform/*
 *.tfvars
+*.bigw

@@ -21,7 +21,7 @@ type Peer struct {
 
 var peers []*Peer
 
-// StartConnection initiates a connection to a new peer. It reqbigwres an intermediate as well as an IP
+// StartConnection initiates a connection to a new peer. It requires an intermediate as well as an IP
 func StartConnection(intermediate string, newPeerIPString string) (*Peer, error) {
 	util.Infoln("Beginning new connection")
 
@@ -51,8 +51,8 @@ func StartConnection(intermediate string, newPeerIPString string) (*Peer, error)
 			break
 		}
 
-		for _, recieved := range recievedPeers {
-			n, err := net.ResolveUDPAddr("udp4", recieved)
+		for _, received := range receivedPeers {
+			n, err := net.ResolveUDPAddr("udp4", received)
 			if err != nil {
 				return nil, err
 			}
@@ -87,6 +87,8 @@ func StartConnection(intermediate string, newPeerIPString string) (*Peer, error)
 			return nil, errors.New("timeout on connection attempt")
 		}
 	}
+
+	GossipPeers(intermediate)
 
 	return newPeer, nil
 }
@@ -131,9 +133,16 @@ func (p *Peer) retransmission() {
 // BroadcastMessage sends a message to all peers, telling them to pass it on as well
 // Note: Broadcast messages are not acked.
 // Note: Peer receiving broadcasts should be able to handle duplicates
-func BroadcastMessage(msg []byte) error {
+func BroadcastMessage(msg []byte, maxBounces int8) error {
+	// Do not broadcast message which has reached maxBounces
+	if maxBounces < 0 {
+		return nil
+	}
+
 	for _, p := range peers {
 		newMessage := p.NewMessage(msg, false, true)
+		newMessage.MaxBounces = maxBounces
+
 		p.unackedMessages = append(p.unackedMessages, newMessage)
 
 		_, err := port.WriteToUDP(newMessage.Serialize(), p.PeerAddress)
@@ -147,12 +156,15 @@ func BroadcastMessage(msg []byte) error {
 
 // GossipPeers broadcasts our list of peers
 func GossipPeers(intermediate string) {
-	peersList := intermediate + " "
+	peersList := "Gossip " + intermediate + " "
 	for _, p := range peers {
-		peersList += p.PeerAddress.String() + " "
+		peersList += p.PeerAddress.IP.String() + " "
 	}
 
-	BroadcastMessage([]byte(peersList))
+	err := BroadcastMessage([]byte(peersList), 1)
+	if err != nil {
+		util.Errorln(err)
+	}
 }
 
 // GetAllPeers returns the list of currently connected peers

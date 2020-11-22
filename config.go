@@ -8,6 +8,7 @@ var (
 	flagIntermediateIP   string
 	flagIntermediatePort int
 	flagPeerIP           string
+	flagVotepackFilename string
 
 	flagNoUPNP                bool
 	flagConfirmNewConnections bool
@@ -17,6 +18,7 @@ func parseCommandline() {
 	flag.StringVarP(&flagIntermediateIP, "intermediateIP", "i", "", "The IPv4 address of the intermediate to connect through")
 	flag.IntVarP(&flagIntermediatePort, "intermediatePort", "o", 42069, "The UDP port of the intermediate to connect through, the default is 42069")
 	flag.StringVarP(&flagPeerIP, "peerIP", "p", "", "The IPv4 address of the peer to begin connecting with")
+	flag.StringVarP(&flagPeerIP, "votepack", "v", "", "The filename of the votepack to use")
 
 	flag.BoolVar(&flagNoUPNP, "noUPNP", false, "Should the local intermediate server use UPNP port forwarding")
 	flag.BoolVar(&flagConfirmNewConnections, "confirmNewConnections", false, "Require confirmation before connecting to gossipped peers")

@@ -6,11 +6,12 @@ import (
 )
 
 // Message has information about the message such as sequence number and data.
-// Of a message recieved, the first 10 bytes are the header.
+// Of a message received, the first 10 bytes are the header.
 type Message struct {
 	SequenceNumber int
 	Ack            bool
 	Broadcast      bool
+	MaxBounces     int8
 	Data           []byte
 
 	sentAt time.Time
@@ -45,7 +46,9 @@ func (m *Message) Serialize() []byte {
 		headeredMsg[9] = byte(0)
 	}
 
-	copy(headeredMsg[10:], m.Data)
+	headeredMsg[10] = byte(m.MaxBounces)
+
+	copy(headeredMsg[11:], m.Data)
 
 	return headeredMsg
 }
@@ -66,7 +69,8 @@ func (m *Message) Deserialize(msg []byte) {
 		m.Broadcast = false
 	}
 
+	m.MaxBounces = int8(msg[10])
 	m.SequenceNumber = int(seqNum)
 
-	m.Data = msg[10:]
+	m.Data = msg[11:]
 }

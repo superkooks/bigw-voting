@@ -6,10 +6,14 @@ import (
 )
 
 var port *net.UDPConn
+var externalIP string
 
 // Setup starts the connection helper server and prepares
 // for peer to peer interactions
-func Setup() {
+func Setup(ip string) {
+	// Store reference to external IP for gossiping peers
+	externalIP = ip
+
 	localAddr, err := net.ResolveUDPAddr("udp4", ":42069")
 	if err != nil {
 		panic(err)
