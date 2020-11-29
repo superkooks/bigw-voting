@@ -19,9 +19,9 @@ type Message struct {
 
 // NewMessage creates a new message with header
 func (p *Peer) NewMessage(data []byte, ack bool, broadcast bool) *Message {
-	p.latestSeqNumber++
+	p.localSeqNumber++
 	return &Message{
-		SequenceNumber: p.latestSeqNumber,
+		SequenceNumber: p.localSeqNumber,
 		Ack:            ack,
 		Broadcast:      broadcast,
 		Data:           data,

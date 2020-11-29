@@ -108,7 +108,7 @@ func listener() {
 		}
 
 		// Discard duplicate packets
-		if msg.SequenceNumber <= p.latestSeqNumber {
+		if msg.SequenceNumber <= p.peerSeqNumber {
 			util.Warnf("Discarding duplicate packet %v\n", msg.SequenceNumber)
 			util.Errorf("AHHHHHHHHHHHHH: %v\n", string(msg.Data))
 			continue
@@ -123,11 +123,11 @@ func listener() {
 				panic(err)
 			}
 
-			p.latestSeqNumber = msg.SequenceNumber
+			p.peerSeqNumber = msg.SequenceNumber
 		} else {
 			util.Infoln("Received broadcast packet, passing on to other peers")
 			util.Warnf("broadcast content: %v\n", string(msg.Data))
-			p.latestSeqNumber = msg.SequenceNumber
+			p.peerSeqNumber = msg.SequenceNumber
 			err := BroadcastMessage(msg.Data, msg.MaxBounces-1)
 			if err != nil {
 				util.Errorln(err)
@@ -179,14 +179,6 @@ func listener() {
 					util.Errorf("connecting to %v\n", gossiped)
 
 					go func(gossiped string, intermediate string, externalIP string) {
-						util.Errorln("looks like we are broadcasting a GossipedPeer for", gossiped)
-
-						// Gossiped Peer peer connect to externalIP at intermediate
-						err := BroadcastMessage([]byte("GossipedPeer "+gossiped+" "+externalIP+" "+intermediate), 1)
-						if err != nil {
-							util.Errorln(err)
-						}
-
 						p, err := StartConnection(intermediate, gossiped)
 						if err != nil {
 							util.Errorln(err)
@@ -197,37 +189,8 @@ func listener() {
 				}
 			}
 
-			// Don't pass on the peer gossip
+			// Don't pass on peer gossip to the message listener outside this module
 			continue
-		}
-
-		// Check if this a peer responding to a Peer Gossip
-		if len(msgSplit) >= 2 && msgSplit[0] == "GossipedPeer" {
-			if msgSplit[1] == externalIP {
-				var found bool
-				for _, connected := range GetAllPeerIPs() {
-					if connected == msgSplit[2] {
-						found = true
-						break
-					}
-				}
-
-				if found {
-					continue
-				}
-
-				util.Warnf("New peer %v is connecting to us through intermediate %v\n", msgSplit[2], msgSplit[3])
-				go func() {
-					p, err := StartConnection(msgSplit[3], msgSplit[2])
-					if err != nil {
-						util.Errorln(err)
-					}
-
-					p.SendMessage([]byte("Oh Really"))
-				}()
-
-				continue
-			}
 		}
 
 		// Pass on the message

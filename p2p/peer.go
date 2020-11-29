@@ -16,7 +16,8 @@ type Peer struct {
 	Established bool
 	MaxRTT      time.Duration
 
-	latestSeqNumber int
+	peerSeqNumber   int
+	localSeqNumber  int
 	unackedMessages []*Message
 }
 
@@ -111,7 +112,7 @@ func (p *Peer) SendMessage(msg []byte) error {
 	p.unackedMessages = append(p.unackedMessages, newMessage)
 	time.AfterFunc(p.MaxRTT, p.retransmission)
 
-	util.Infof("Sending message with seq. number: %v\n", p.latestSeqNumber)
+	util.Infof("Sending message with seq. number: %v\n", p.localSeqNumber)
 	_, err := port.WriteToUDP(newMessage.Serialize(), p.PeerAddress)
 	if err != nil {
 		return err
@@ -143,7 +144,7 @@ func (p *Peer) retransmission() {
 			time.AfterFunc(p.MaxRTT, p.retransmission)
 
 			newPacket := packet.Serialize()
-			util.Warnf("Retransmitting seq. number: %v\n", p.latestSeqNumber)
+			util.Warnf("Retransmitting seq. number: %v\n", p.localSeqNumber)
 			_, err := port.WriteToUDP(newPacket, p.PeerAddress)
 			if err != nil {
 				panic(err)
@@ -153,7 +154,7 @@ func (p *Peer) retransmission() {
 }
 
 // BroadcastMessage sends a message to all peers, telling them to pass it on as well
-// Note: Broadcast messages are not acked.
+// Note: Acks for broadcasts are only recieved from peers currently connected to this peer
 // Note: Peer receiving broadcasts should be able to handle duplicates
 func BroadcastMessage(msg []byte, maxBounces int8) error {
 	// Do not broadcast message which has reached maxBounces
