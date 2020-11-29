@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -20,10 +21,18 @@ type Peer struct {
 }
 
 var peers []*Peer
+var connectingTo []string
 
 // StartConnection initiates a connection to a new peer. It requires an intermediate as well as an IP
 func StartConnection(intermediate string, newPeerIPString string) (*Peer, error) {
-	util.Infoln("Beginning new connection")
+	for _, v := range connectingTo {
+		if v == newPeerIPString {
+			return nil, fmt.Errorf("Already connecting to %v", newPeerIPString)
+		}
+	}
+
+	util.Infoln("Beginning new connection to", newPeerIPString)
+	connectingTo = append(connectingTo, newPeerIPString)
 
 	intermediateAddr, err := net.ResolveUDPAddr("udp4", intermediate)
 	if err != nil {
@@ -90,6 +99,9 @@ func StartConnection(intermediate string, newPeerIPString string) (*Peer, error)
 
 	GossipPeers(intermediate)
 
+	// Wait for all gossips to complete to ensure no overlapping sequence numbers
+	time.Sleep(3 * time.Second)
+
 	return newPeer, nil
 }
 
@@ -116,6 +128,16 @@ func (p *Peer) retransmission() {
 			// Increase the peer's MaxRTT after losing packet
 			p.MaxRTT = time.Duration(float64(p.MaxRTT.Milliseconds())*1.75) * time.Millisecond
 
+			// Peer should be disconnected
+			if p.MaxRTT > 8*time.Second {
+				for k, v := range peers {
+					if v.PeerAddress.IP.String() == p.PeerAddress.String() {
+						peers = append(peers[:k], peers[k+1:]...)
+						break
+					}
+				}
+			}
+
 			// Retransmit the packet and add to p.unacked with new sentAt
 			packet.sentAt = time.Now()
 			time.AfterFunc(p.MaxRTT, p.retransmission)
@@ -140,11 +162,14 @@ func BroadcastMessage(msg []byte, maxBounces int8) error {
 	}
 
 	for _, p := range peers {
+		if !p.Established {
+			continue
+		}
+
 		newMessage := p.NewMessage(msg, false, true)
 		newMessage.MaxBounces = maxBounces
 
-		p.unackedMessages = append(p.unackedMessages, newMessage)
-
+		util.Infof("Sending broadcast to %v with seq. number: %v\n", p.PeerAddress.IP.String(), newMessage.SequenceNumber)
 		_, err := port.WriteToUDP(newMessage.Serialize(), p.PeerAddress)
 		if err != nil {
 			return err
@@ -156,14 +181,22 @@ func BroadcastMessage(msg []byte, maxBounces int8) error {
 
 // GossipPeers broadcasts our list of peers
 func GossipPeers(intermediate string) {
-	if intermediate == "127.0.0.1:42069" {
+	// TODO(SuperKooks) These ports are hard-coded
+	if intermediate == "127.0.0.1:42069" || intermediate == "localhost:42069" {
 		intermediate = externalIP + ":42069"
 	}
 
 	peersList := "Gossip " + intermediate + " "
 	for _, p := range peers {
-		peersList += p.PeerAddress.IP.String() + " "
+		if p.Established {
+			peersList += p.PeerAddress.IP.String() + " "
+		}
 	}
+
+	// Remove unecessary space after last peer
+	peersList = strings.TrimRight(peersList, " ")
+
+	util.Warnln("Sending:", peersList)
 
 	err := BroadcastMessage([]byte(peersList), 1)
 	if err != nil {
@@ -180,7 +213,9 @@ func GetAllPeers() []*Peer {
 func GetAllPeerIPs() []string {
 	var out []string
 	for _, v := range peers {
-		out = append(out, v.PeerAddress.IP.String())
+		if v.Established {
+			out = append(out, v.PeerAddress.IP.String())
+		}
 	}
 
 	return out

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"bigw-voting/util"
+	"os"
 
 	"github.com/gdamore/tcell/v2"
 	"gitlab.com/tslocum/cview"
@@ -34,6 +35,8 @@ func Start() {
 	if err := app.Run(); err != nil {
 		panic(err)
 	}
+
+	os.Exit(0)
 }
 
 // NewVote shows a new voting widget to allow voting in

@@ -38,17 +38,20 @@ func main() {
 		for _, addr := range addrs {
 			switch v := addr.(type) {
 			case *net.IPNet:
-				localIP = v.IP.String()
+				if !util.IsPublicIP(v.IP.String()) && v.IP.To4() != nil {
+					localIP = v.IP.String()
+					break
+				}
 			case *net.IPAddr:
-				localIP = v.IP.String()
+				if !util.IsPublicIP(v.IP.String()) && v.IP.To4() != nil {
+					localIP = v.IP.String()
+					break
+				}
 			}
-
-			break
 		}
 	}
 
-	externalIP := localIP
-
+	var externalIP string
 	if !flagNoUPNP {
 		clients, _, err := upnp.NewWANIPConnection1Clients()
 		if err != nil {
@@ -90,6 +93,34 @@ func main() {
 			}
 			util.Infof("Starting intermediate server at external IP: %v:42069\n", externalIP)
 		}
+	}
+
+	if !util.IsPublicIP(externalIP) {
+		var extIP string
+		for _, i := range ifaces {
+			addrs, err := i.Addrs()
+			if err != nil {
+				panic(err)
+			}
+
+			for _, addr := range addrs {
+				switch v := addr.(type) {
+				case *net.IPNet:
+					if util.IsPublicIP(v.IP.String()) {
+						extIP = v.IP.String()
+						break
+					}
+
+				case *net.IPAddr:
+					if util.IsPublicIP(v.IP.String()) {
+						extIP = v.IP.String()
+						break
+					}
+				}
+			}
+		}
+
+		externalIP = extIP
 	}
 
 	p2p.Setup(externalIP)

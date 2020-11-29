@@ -19,8 +19,11 @@ func CommandConnect(args []string) {
 	flagSet.SetOutput(log.Writer())
 
 	err := flagSet.Parse(args)
-	if err != nil {
+	if err == flag.ErrHelp {
+		return
+	} else if err != nil {
 		util.Errorf("could not parse command: %v\n", err)
+		return
 	}
 
 	p, err := p2p.StartConnection(fmt.Sprintf("%v:%v", *intIP, *intPort), *peerIP)

@@ -20,7 +20,9 @@ func listener() {
 
 		// Is the person a peer?
 		p := getPeer(replyTo)
-		if p == nil {
+
+		// "Unconnected Peers" returns a list of unconnected peers
+		if string(buf[:n]) == "Unconnected Peers" {
 			var shouldNotAdd bool
 			for _, unconnectedP := range unconnectedPeers {
 				if unconnectedP.String() == replyTo.String() {
@@ -33,10 +35,7 @@ func listener() {
 				util.Infof("Adding %v to unconnected list\n", replyTo.String())
 				unconnectedPeers = append(unconnectedPeers, replyTo)
 			}
-		}
 
-		// "Unconnected Peers" returns a list of unconnected peers
-		if string(buf[:n]) == "Unconnected Peers" {
 			out := "Unconnected Peers "
 			for _, p := range unconnectedPeers {
 				out += p.String() + " "
@@ -69,14 +68,23 @@ func listener() {
 		if string(buf[:n]) == "Established" {
 			p.Established = true
 			util.Infof("Established new connection with %v\n", p.PeerAddress.String())
+
+			for k, v := range unconnectedPeers {
+				if p.PeerAddress.String() == v.String() {
+					unconnectedPeers = append(unconnectedPeers[:k], unconnectedPeers[k+1:]...)
+				}
+			}
+
 			continue
 		}
 
 		// Check if it is a list of peers being received from an intermediate
 		split := strings.Split(string(buf[:n]), " ")
-		if split[0] == "Unconnected" && split[1] == "Peers" {
-			receivedPeers = split[2 : len(split)-1]
-			continue
+		if len(split) > 1 {
+			if split[0] == "Unconnected" && split[1] == "Peers" {
+				receivedPeers = split[2 : len(split)-1]
+				continue
+			}
 		}
 
 		// Start parsing normal packets
@@ -101,12 +109,15 @@ func listener() {
 
 		// Discard duplicate packets
 		if msg.SequenceNumber <= p.latestSeqNumber {
+			util.Warnf("Discarding duplicate packet %v\n", msg.SequenceNumber)
+			util.Errorf("AHHHHHHHHHHHHH: %v\n", string(msg.Data))
 			continue
 		}
 
 		// Don't ack broadcast packets
 		if !msg.Broadcast {
 			util.Infof("Acking seq. number: %v\n", msg.SequenceNumber)
+			util.Warnf("acking message: %v\n", string(msg.Data))
 			_, err = port.WriteToUDP((&Message{Data: []byte{}, SequenceNumber: msg.SequenceNumber, Ack: true}).Serialize(), replyTo)
 			if err != nil {
 				panic(err)
@@ -115,20 +126,29 @@ func listener() {
 			p.latestSeqNumber = msg.SequenceNumber
 		} else {
 			util.Infoln("Received broadcast packet, passing on to other peers")
+			util.Warnf("broadcast content: %v\n", string(msg.Data))
+			p.latestSeqNumber = msg.SequenceNumber
 			err := BroadcastMessage(msg.Data, msg.MaxBounces-1)
 			if err != nil {
 				util.Errorln(err)
 				continue
 			}
+
+			util.Warnln("finished broadcast")
 		}
 
 		msgSplit := strings.Split(string(msg.Data), " ")
 
 		// Check if this is a Peer Gossip
 		if msgSplit[0] == "Gossip" {
+			util.Errorf("gossip message: %v\n", msgSplit)
+
 			intermediate := msgSplit[1]
 
+			util.Errorf("gossiped peers? %v\n", msgSplit[2:])
 			for _, gossiped := range msgSplit[2:] {
+				util.Errorf("now checking %v\n", gossiped)
+
 				if gossiped == " " || gossiped == "" {
 					continue
 				}
@@ -143,20 +163,37 @@ func listener() {
 
 				// We are not connected to this peer, we should connect
 				if !found {
-					// Gossiped Peer peer connect to externalIP at intermediate
-					err := BroadcastMessage([]byte("GossipedPeer "+gossiped+" "+externalIP+" "+intermediate), 1)
-					if err != nil {
-						util.Errorln(err)
+					var shouldSkip bool
+					for _, v := range connectingTo {
+						if v == gossiped {
+							util.Infof("Gossipped peer %v is already being connected to\n", gossiped)
+							shouldSkip = true
+							break
+						}
+					}
+
+					if shouldSkip {
 						continue
 					}
 
-					p, err := StartConnection(intermediate, gossiped)
-					if err != nil {
-						util.Errorln(err)
-						continue
-					}
+					util.Errorf("connecting to %v\n", gossiped)
 
-					p.SendMessage([]byte("Oh Really"))
+					go func(gossiped string, intermediate string, externalIP string) {
+						util.Errorln("looks like we are broadcasting a GossipedPeer for", gossiped)
+
+						// Gossiped Peer peer connect to externalIP at intermediate
+						err := BroadcastMessage([]byte("GossipedPeer "+gossiped+" "+externalIP+" "+intermediate), 1)
+						if err != nil {
+							util.Errorln(err)
+						}
+
+						p, err := StartConnection(intermediate, gossiped)
+						if err != nil {
+							util.Errorln(err)
+						}
+
+						p.SendMessage([]byte("Oh Really"))
+					}(gossiped, intermediate, externalIP)
 				}
 			}
 
@@ -165,14 +202,32 @@ func listener() {
 		}
 
 		// Check if this a peer responding to a Peer Gossip
-		if msgSplit[0] == "GossipedPeer" && msgSplit[1] == externalIP {
-			p, err := StartConnection(msgSplit[4], msgSplit[3])
-			if err != nil {
-				util.Errorln(err)
+		if len(msgSplit) >= 2 && msgSplit[0] == "GossipedPeer" {
+			if msgSplit[1] == externalIP {
+				var found bool
+				for _, connected := range GetAllPeerIPs() {
+					if connected == msgSplit[2] {
+						found = true
+						break
+					}
+				}
+
+				if found {
+					continue
+				}
+
+				util.Warnf("New peer %v is connecting to us through intermediate %v\n", msgSplit[2], msgSplit[3])
+				go func() {
+					p, err := StartConnection(msgSplit[3], msgSplit[2])
+					if err != nil {
+						util.Errorln(err)
+					}
+
+					p.SendMessage([]byte("Oh Really"))
+				}()
+
 				continue
 			}
-
-			p.SendMessage([]byte("Oh Really"))
 		}
 
 		// Pass on the message
