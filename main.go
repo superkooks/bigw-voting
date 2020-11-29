@@ -5,22 +5,28 @@ import (
 	"bigw-voting/p2p"
 	"bigw-voting/ui"
 	"bigw-voting/util"
+	"crypto/sha256"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"time"
 
 	upnp "github.com/huin/goupnp/dcps/internetgateway2"
 )
+
+var votepack *Votepack
 
 func main() {
 	parseCommandline()
 	commands.RegisterAll()
 
 	go ui.Start()
+	defer ui.Stop()
 
 	time.Sleep(100 * time.Millisecond)
-	v := NewVotepackFromFile(flagVotepackFilename)
-	ui.NewVote(v.Candidates, ui.SubmitVotes)
+	votepack = NewVotepackFromFile(flagVotepackFilename)
+	ui.NewVote(votepack.Candidates, ui.SubmitVotes)
 
 	// Find local IP for BGW as well as for UPNP mapping
 	ifaces, err := net.Interfaces()
@@ -123,24 +129,30 @@ func main() {
 		externalIP = extIP
 	}
 
-	p2p.Setup(externalIP)
+	p2p.Setup(externalIP, NewPeerCallback)
 
-	newPeer, err := p2p.StartConnection(fmt.Sprintf("%v:%v", flagIntermediateIP, flagIntermediatePort), flagPeerIP)
+	_, err = p2p.StartConnection(fmt.Sprintf("%v:%v", flagIntermediateIP, flagIntermediatePort), flagPeerIP)
 	if err != nil {
 		ui.Stop()
 		panic(err)
 	}
 
-	newPeer.SendMessage([]byte("Hello world!"))
+	// Wait for Ctrl-C
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+}
 
-	for {
-		for _, p := range p2p.GetAllPeers() {
-			select {
-			case m := <-p.Messages:
-				util.Infof("New Packet: %v\n", string(m))
-			default:
+// NewPeerCallback serves as the callback for when new peers are connected.
+// It verifies the votepack is consistent.
+func NewPeerCallback(p *p2p.Peer) {
+	// Start a goroutine (one per peer) for a listener
+	go listener(p)
 
-			}
-		}
+	util.Infoln("Verifying votepack with new peer")
+	hash := sha256.Sum256(votepack.Export())
+	err := p.SendMessage(append([]byte("VotepackVerify "), hash[:]...))
+	if err != nil {
+		util.Errorf("Unable to send message to %v, %v\n", p.PeerAddress.IP.String(), err)
 	}
 }

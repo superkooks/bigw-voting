@@ -103,6 +103,8 @@ func StartConnection(intermediate string, newPeerIPString string) (*Peer, error)
 	// Wait for all gossips to complete to ensure no overlapping sequence numbers
 	time.Sleep(3 * time.Second)
 
+	newPeerCallback(newPeer)
+
 	return newPeer, nil
 }
 

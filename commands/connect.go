@@ -26,13 +26,7 @@ func CommandConnect(args []string) {
 		return
 	}
 
-	p, err := p2p.StartConnection(fmt.Sprintf("%v:%v", *intIP, *intPort), *peerIP)
-	if err != nil {
-		util.Errorln(err)
-		return
-	}
-
-	err = p.SendMessage([]byte("What is up?"))
+	_, err = p2p.StartConnection(fmt.Sprintf("%v:%v", *intIP, *intPort), *peerIP)
 	if err != nil {
 		util.Errorln(err)
 		return

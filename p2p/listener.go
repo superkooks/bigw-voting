@@ -117,7 +117,6 @@ func listener() {
 		// Don't ack broadcast packets
 		if !msg.Broadcast {
 			util.Infof("Acking seq. number: %v\n", msg.SequenceNumber)
-			util.Warnf("acking message: %v\n", string(msg.Data))
 			_, err = port.WriteToUDP((&Message{Data: []byte{}, SequenceNumber: msg.SequenceNumber, Ack: true}).Serialize(), replyTo)
 			if err != nil {
 				panic(err)
@@ -179,12 +178,10 @@ func listener() {
 					util.Errorf("connecting to %v\n", gossiped)
 
 					go func(gossiped string, intermediate string, externalIP string) {
-						p, err := StartConnection(intermediate, gossiped)
+						_, err := StartConnection(intermediate, gossiped)
 						if err != nil {
 							util.Errorln(err)
 						}
-
-						p.SendMessage([]byte("Oh Really"))
 					}(gossiped, intermediate, externalIP)
 				}
 			}
