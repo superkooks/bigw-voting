@@ -4,12 +4,12 @@ import (
 	"bigw-voting/util"
 	"os"
 
-	"github.com/gdamore/tcell/v2"
 	"gitlab.com/tslocum/cview"
 )
 
 var app *cview.Application
 var ir *instantRunoff
+var pl *cview.List
 var consoleInput *cview.InputField
 var consoleOutput *cview.TextView
 
@@ -21,10 +21,12 @@ func Start() {
 	ir = newInstantRunoff()
 	ir.visible = false
 
+	pl = newPeerList()
+
 	subFlex := cview.NewFlex()
 	subFlex.SetDirection(cview.FlexRow)
 	subFlex.AddItem(ir, 0, 3, true)
-	subFlex.AddItem(demoBox("Connected Peers"), 0, 2, false)
+	subFlex.AddItem(pl, 0, 2, false)
 
 	rootFlex := cview.NewFlex()
 	console := consoleBox()
@@ -60,13 +62,4 @@ func SubmitVotes(votes map[string]int) {
 // Stop closes the application
 func Stop() {
 	app.Stop()
-}
-
-func demoBox(title string) *cview.Box {
-	b := cview.NewBox()
-	b.SetBorder(true)
-	b.SetTitle(title)
-	b.SetBorderColor(tcell.ColorLime)
-	b.SetTitleColor(tcell.ColorLime)
-	return b
 }

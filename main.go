@@ -155,4 +155,6 @@ func NewPeerCallback(p *p2p.Peer) {
 	if err != nil {
 		util.Errorf("Unable to send message to %v, %v\n", p.PeerAddress.IP.String(), err)
 	}
+
+	ui.AddPeerToList(p.PeerAddress.IP.String(), "Votepack Verified")
 }
