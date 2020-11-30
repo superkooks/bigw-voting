@@ -2,7 +2,6 @@ package bgw
 
 import (
 	"bigw-voting/util"
-	"fmt"
 	"sort"
 )
 
@@ -31,8 +30,6 @@ func NewVotingCircuit(in int, externalIP string, peerIPs []string) (Input, map[s
 		inputs = append(inputs, newIn)
 	}
 
-	fmt.Printf("Num of inputs: %v\n", len(inputs))
-
 	// Insert addition gates for all inputs
 	var nextIn Input
 	for _, v := range inputs {
@@ -41,7 +38,6 @@ func NewVotingCircuit(in int, externalIP string, peerIPs []string) (Input, map[s
 			continue
 		}
 
-		fmt.Println("Adding addition gate")
 		nextIn = &AdditionGate{
 			Inputs: []Input{nextIn, v},
 		}
@@ -76,8 +72,6 @@ func DescendCircuit(head Input, shares []int) {
 }
 
 func descendNode(node Input) []Input {
-	fmt.Printf("%t\n", node)
-
 	switch n := node.(type) {
 	case *ShamirInput:
 		if n.Point == 0 {

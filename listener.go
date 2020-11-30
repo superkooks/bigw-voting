@@ -1,17 +1,22 @@
 package main
 
 import (
-	"bigw-voting/p2p"
+	"bigw-voting/ui"
 	"bigw-voting/util"
 	"crypto/sha256"
+	"fmt"
+	"strconv"
 	"strings"
 )
 
+var receivedPeerShares map[string]int
+var receivedPeerOutputs map[string]int
+
 // listener is the function primarily responsible for listening to and
 // responding to messages.
-func listener(p *p2p.Peer) {
+func listener(v *Voter) {
 	for {
-		msg := <-p.Messages
+		msg := <-v.Peer.Messages
 
 		msgSplit := strings.Split(string(msg), " ")
 		if msgSplit[0] == "VotepackVerify" {
@@ -19,9 +24,9 @@ func listener(p *p2p.Peer) {
 
 			// Only respond to peer if there is a difference in votepack
 			if msgSplit[1] != string(localHash[:]) {
-				err := p.SendMessage([]byte("VotepackInvalid"))
+				err := v.Peer.SendMessage([]byte("VotepackInvalid"))
 				if err != nil {
-					util.Errorf("Unable to send message to %v, %v\n", p.PeerAddress.IP.String(), err)
+					util.Errorf("Unable to send message to %v, %v\n", v.Peer.PeerAddress.IP.String(), err)
 				}
 			}
 
@@ -29,8 +34,47 @@ func listener(p *p2p.Peer) {
 		}
 
 		if msgSplit[0] == "VotepackInvalid" {
-			util.Errorf("Peer %v is using a different votepack\n", p.PeerAddress.IP.String())
-			continue
+			ui.Stop()
+			panic(fmt.Errorf("peer %v is using a different votepack", v.Peer.PeerAddress.IP.String()))
+		}
+
+		if msgSplit[0] == "StatusUpdate" {
+			v.Status = fmt.Sprint(msgSplit[1:])
+			util.Infof("Peer %v is now %v\n", v.Peer.PeerAddress.IP.String(), v.Status)
+
+			var dontBegin bool
+			for _, v := range allVoters {
+				if v.Status != "Voting Complete" {
+					// Don't begin BGW if peers have not finished voting
+					dontBegin = true
+					break
+				}
+			}
+
+			if dontBegin {
+				continue
+			}
+
+			// All peers have voted, proceed with BGW
+			RunBGW()
+		}
+
+		if msgSplit[0] == "YourShare" {
+			conv, err := strconv.Atoi(msgSplit[1])
+			if err != nil {
+				util.Errorln("Unable to parse share recieved from peer")
+			}
+
+			receivedPeerShares[v.Peer.PeerAddress.IP.String()] = conv
+		}
+
+		if msgSplit[0] == "MyOutput" {
+			conv, err := strconv.Atoi(msgSplit[1])
+			if err != nil {
+				util.Errorln("Unable to parse output recieved from peer")
+			}
+
+			receivedPeerOutputs[v.Peer.PeerAddress.IP.String()] = conv
 		}
 	}
 }

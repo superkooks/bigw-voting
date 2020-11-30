@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bigw-voting/util"
 	"os"
 
 	"gitlab.com/tslocum/cview"
@@ -50,13 +49,6 @@ func NewVote(choices []string, callback func(map[string]int)) {
 // ClearVote hides the voting widget
 func ClearVote() {
 	ir.SetVisible(false)
-}
-
-// SubmitVotes prints the votes
-func SubmitVotes(votes map[string]int) {
-	for k, v := range votes {
-		util.Infof("%v: %v", k, v)
-	}
 }
 
 // Stop closes the application

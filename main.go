@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bigw-voting/bgw"
 	"bigw-voting/commands"
 	"bigw-voting/p2p"
+	"bigw-voting/shamir"
 	"bigw-voting/ui"
 	"bigw-voting/util"
 	"crypto/sha256"
@@ -10,12 +12,19 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sort"
 	"time"
 
 	upnp "github.com/huin/goupnp/dcps/internetgateway2"
 )
 
 var votepack *Votepack
+var localVotes map[string]int
+
+var allVoters []*Voter
+var localStatus string
+
+var externalIP string
 
 func main() {
 	parseCommandline()
@@ -26,7 +35,7 @@ func main() {
 
 	time.Sleep(100 * time.Millisecond)
 	votepack = NewVotepackFromFile(flagVotepackFilename)
-	ui.NewVote(votepack.Candidates, ui.SubmitVotes)
+	ui.NewVote(votepack.Candidates, SubmitVotes)
 
 	// Find local IP for BGW as well as for UPNP mapping
 	ifaces, err := net.Interfaces()
@@ -57,7 +66,6 @@ func main() {
 		}
 	}
 
-	var externalIP string
 	if !flagNoUPNP {
 		clients, _, err := upnp.NewWANIPConnection1Clients()
 		if err != nil {
@@ -101,6 +109,7 @@ func main() {
 		}
 	}
 
+	// Find our public IP
 	if !util.IsPublicIP(externalIP) {
 		var extIP string
 		for _, i := range ifaces {
@@ -137,6 +146,8 @@ func main() {
 		panic(err)
 	}
 
+	localStatus = "Voting InProgress"
+
 	// Wait for Ctrl-C
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
@@ -146,15 +157,148 @@ func main() {
 // NewPeerCallback serves as the callback for when new peers are connected.
 // It verifies the votepack is consistent.
 func NewPeerCallback(p *p2p.Peer) {
-	// Start a goroutine (one per peer) for a listener
-	go listener(p)
+	// Create voter structure
+	voter := NewVoter(p)
+	allVoters = append(allVoters, voter)
 
+	// Start a goroutine (one per peer) for a listener
+	go listener(voter)
+
+	// Send our current status to the peer
+	err := p.SendMessage([]byte("StatusUpdate " + localStatus))
+	if err != nil {
+		util.Errorf("Unable to send message to %v, %v\n", p.PeerAddress.IP.String(), err)
+	}
+
+	// Verify votepack with new peer
 	util.Infoln("Verifying votepack with new peer")
 	hash := sha256.Sum256(votepack.Export())
-	err := p.SendMessage(append([]byte("VotepackVerify "), hash[:]...))
+	err = p.SendMessage(append([]byte("VotepackVerify "), hash[:]...))
 	if err != nil {
 		util.Errorf("Unable to send message to %v, %v\n", p.PeerAddress.IP.String(), err)
 	}
 
 	ui.AddPeerToList(p.PeerAddress.IP.String(), "Votepack Verified")
+}
+
+// SubmitVotes is the callback for the instantFunoff voting submit button
+func SubmitVotes(submittedVotes map[string]int) {
+	localStatus = "Voting Complete"
+	localVotes = submittedVotes
+
+	// UpdateStatus to all peers
+	err := p2p.BroadcastMessage([]byte("StatusUpdate "+localStatus), 0)
+	if err != nil {
+		util.Errorf("Unable to broadcast status update: %v\n", err)
+	}
+
+	for _, v := range allVoters {
+		if v.Status != "Voting Complete" {
+			// Don't begin BGW if peers have not finished voting
+			return
+		}
+	}
+
+	// Proceed with BGW
+	RunBGW()
+}
+
+// RunBGW begins the BGW protocol, with circuits for each round of voting
+func RunBGW() {
+	// A IRV is used to eliminate candidates until there are only 3 left
+	// https://en.wikipedia.org/wiki/Instant-runoff_voting
+
+	// For each round of IRV, the number of votes must be tallied for each candidate.
+	// This means there must be a BGW circuit for each candidate for each round.
+	// In a 5 candidate election, that means there must be 5+4 = 9 circuits.
+
+	// Create deep copy of elements, so we don't mess up the original candidates
+	currentCandidates := make([]string, len(votepack.Candidates))
+	copy(currentCandidates, votepack.Candidates)
+
+	for len(currentCandidates) > 3 {
+		// Add votes for each candidate (in alphabetical order)
+		currentVotes := make(map[string]int)
+		sort.Strings(currentCandidates)
+
+		for _, v := range currentCandidates {
+			sortedPeerIPs := p2p.GetAllPeerIPs()
+			sort.Strings(sortedPeerIPs)
+
+			// Create BGW circuit
+			head, shares := bgw.NewVotingCircuit(localVotes[v], externalIP, sortedPeerIPs)
+
+			// Send shares to peers
+			for k, v := range shares {
+				for _, voter := range allVoters {
+					if voter.Peer.PeerAddress.IP.String() == k {
+						err := voter.Peer.SendMessage([]byte(fmt.Sprintf("YourShare %v", v)))
+						if err != nil {
+							util.Errorf("Unable to broadcast peer share: %v\n", err)
+						}
+					}
+				}
+			}
+
+			// Wait for all peer shares to be received
+			for {
+				if len(receivedPeerShares) == len(sortedPeerIPs) {
+					break
+				}
+				time.Sleep(100 * time.Millisecond)
+			}
+
+			// Sort peer shares then descend circuit
+			var sortedPeerShares []int
+			for _, v := range sortedPeerIPs {
+				sortedPeerShares = append(sortedPeerShares, receivedPeerShares[v])
+			}
+			bgw.DescendCircuit(head, sortedPeerShares)
+
+			// Get output of circuit and broadcast
+			circuitOut := head.GetOutput()
+			err := p2p.BroadcastMessage([]byte(fmt.Sprintf("MyOutput %v", circuitOut)), 0)
+			if err != nil {
+				util.Errorf("Unable to broadcast circuit output: %v\n", err)
+			}
+
+			// Wait for all peer outputs to be recieved
+			for {
+				if len(receivedPeerShares) == len(sortedPeerIPs) {
+					break
+				}
+				time.Sleep(100 * time.Millisecond)
+			}
+
+			// Sort peer outputs then add votes
+			var sortedPeerOutputs [][2]int
+			for k, v := range sortedPeerIPs {
+				sortedPeerOutputs = append(sortedPeerOutputs, [2]int{k + 1, receivedPeerOutputs[v]})
+			}
+
+			currentVotes[v], err = shamir.ReconstructSecret(sortedPeerOutputs)
+			if err != nil {
+				util.Errorln("Could not reconstruct circuit output: ", err)
+			}
+		}
+
+		util.Infoln(currentVotes)
+
+		// Eliminate worst candidate
+		var worstCandidate string
+		worstCandidateVotes := 99999
+		for k, v := range currentVotes {
+			if v < worstCandidateVotes {
+				worstCandidate = k
+			}
+		}
+
+		util.Infoln("Eliminating candidate", worstCandidate)
+
+		for k, v := range currentCandidates {
+			if v == worstCandidate {
+				currentCandidates = append(currentCandidates[:k], currentCandidates[k+1:]...)
+			}
+		}
+	}
 }

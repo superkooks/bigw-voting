@@ -156,7 +156,7 @@ func (p *Peer) retransmission() {
 }
 
 // BroadcastMessage sends a message to all peers, telling them to pass it on as well
-// Note: Acks for broadcasts are only recieved from peers currently connected to this peer
+// Note: Acks for broadcasts are only received from peers currently connected to this peer
 // Note: Peer receiving broadcasts should be able to handle duplicates
 func BroadcastMessage(msg []byte, maxBounces int8) error {
 	// Do not broadcast message which has reached maxBounces
