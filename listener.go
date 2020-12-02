@@ -4,13 +4,14 @@ import (
 	"bigw-voting/ui"
 	"bigw-voting/util"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 )
 
-var receivedPeerShares map[string]int
-var receivedPeerOutputs map[string]int
+var receivedPeerShares = make(map[string][]int)
+var receivedPeerOutputs = make(map[string]int)
 
 // listener is the function primarily responsible for listening to and
 // responding to messages.
@@ -39,33 +40,38 @@ func listener(v *Voter) {
 		}
 
 		if msgSplit[0] == "StatusUpdate" {
-			v.Status = fmt.Sprint(msgSplit[1:])
+			v.Status = strings.Join(msgSplit[1:], " ")
 			util.Infof("Peer %v is now %v\n", v.Peer.PeerAddress.IP.String(), v.Status)
 
 			var dontBegin bool
 			for _, v := range allVoters {
 				if v.Status != "Voting Complete" {
+					util.Infoln("Peers are still voting")
+
 					// Don't begin BGW if peers have not finished voting
 					dontBegin = true
 					break
 				}
 			}
 
-			if dontBegin {
+			if dontBegin || localStatus != "Voting Complete" {
 				continue
 			}
 
 			// All peers have voted, proceed with BGW
-			RunBGW()
+			go RunBGW()
+			continue
 		}
 
-		if msgSplit[0] == "YourShare" {
-			conv, err := strconv.Atoi(msgSplit[1])
+		if msgSplit[0] == "YourShares" {
+			var shares []int
+			err := json.Unmarshal([]byte(strings.Join(msgSplit[1:], " ")), &shares)
 			if err != nil {
-				util.Errorln("Unable to parse share recieved from peer")
+				util.Errorln("Failed to unmarshal peer shares")
 			}
 
-			receivedPeerShares[v.Peer.PeerAddress.IP.String()] = conv
+			receivedPeerShares[v.Peer.PeerAddress.IP.String()] = shares
+			continue
 		}
 
 		if msgSplit[0] == "MyOutput" {
@@ -74,7 +80,9 @@ func listener(v *Voter) {
 				util.Errorln("Unable to parse output recieved from peer")
 			}
 
+			util.Errorf("Received output %v from %v\n", conv, v.Peer.PeerAddress.IP.String())
 			receivedPeerOutputs[v.Peer.PeerAddress.IP.String()] = conv
+			continue
 		}
 	}
 }

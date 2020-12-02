@@ -8,6 +8,7 @@ import (
 	"bigw-voting/ui"
 	"bigw-voting/util"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -200,7 +201,7 @@ func SubmitVotes(submittedVotes map[string]int) {
 	}
 
 	// Proceed with BGW
-	RunBGW()
+	go RunBGW()
 }
 
 // RunBGW begins the BGW protocol, with circuits for each round of voting
@@ -216,23 +217,41 @@ func RunBGW() {
 	currentCandidates := make([]string, len(votepack.Candidates))
 	copy(currentCandidates, votepack.Candidates)
 
+	sortedPeerIPs := p2p.GetAllPeerIPs()
+	sort.Strings(sortedPeerIPs)
+
+	allPeerIPs := append(sortedPeerIPs, externalIP)
+	sort.Strings(allPeerIPs)
+
 	for len(currentCandidates) > 3 {
 		// Add votes for each candidate (in alphabetical order)
 		currentVotes := make(map[string]int)
 		sort.Strings(currentCandidates)
+		irvVote := getIRVVote(currentCandidates, localVotes)
 
 		for _, v := range currentCandidates {
-			sortedPeerIPs := p2p.GetAllPeerIPs()
-			sort.Strings(sortedPeerIPs)
+			// Should we vote for this candidate?
+			shouldVote := 0
+			if v == irvVote {
+				util.Infoln("Voting for candidate", v)
+				shouldVote = 1
+			}
 
 			// Create BGW circuit
-			head, shares := bgw.NewVotingCircuit(localVotes[v], externalIP, sortedPeerIPs)
+			head, shares := bgw.NewVotingCircuit(shouldVote, externalIP, sortedPeerIPs)
 
 			// Send shares to peers
 			for k, v := range shares {
 				for _, voter := range allVoters {
 					if voter.Peer.PeerAddress.IP.String() == k {
-						err := voter.Peer.SendMessage([]byte(fmt.Sprintf("YourShare %v", v)))
+						// Marshal shares
+						b, err := json.Marshal(v)
+						if err != nil {
+							util.Errorln("Unable to marshal peer shares")
+						}
+
+						util.Infoln("Sending:", string(append([]byte("YourShares "), b...)))
+						err = voter.Peer.SendMessage(append([]byte("YourShares "), b...))
 						if err != nil {
 							util.Errorf("Unable to broadcast peer share: %v\n", err)
 						}
@@ -251,44 +270,55 @@ func RunBGW() {
 			// Sort peer shares then descend circuit
 			var sortedPeerShares []int
 			for _, v := range sortedPeerIPs {
-				sortedPeerShares = append(sortedPeerShares, receivedPeerShares[v])
+				sortedPeerShares = append(sortedPeerShares, receivedPeerShares[v]...)
 			}
+			util.Infoln("Descending circuit with", sortedPeerShares)
 			bgw.DescendCircuit(head, sortedPeerShares)
 
 			// Get output of circuit and broadcast
 			circuitOut := head.GetOutput()
+			util.Infoln("Broadcasting", fmt.Sprintf("MyOutput %v", circuitOut))
 			err := p2p.BroadcastMessage([]byte(fmt.Sprintf("MyOutput %v", circuitOut)), 0)
 			if err != nil {
 				util.Errorf("Unable to broadcast circuit output: %v\n", err)
 			}
 
+			receivedPeerOutputs[externalIP] = circuitOut
+
 			// Wait for all peer outputs to be recieved
 			for {
-				if len(receivedPeerShares) == len(sortedPeerIPs) {
+				// Note: allPeerIPs not sortedPeerIPs as we add our result in
+				if len(receivedPeerOutputs) == len(allPeerIPs) {
 					break
 				}
 				time.Sleep(100 * time.Millisecond)
 			}
 
+			util.Infoln("Local circuit output is", receivedPeerOutputs[externalIP])
+
 			// Sort peer outputs then add votes
 			var sortedPeerOutputs [][2]int
-			for k, v := range sortedPeerIPs {
+			for k, v := range allPeerIPs {
+				util.Infof("x: %v, peer: %v, peer-out: %v\n", k+1, v, receivedPeerOutputs[v])
 				sortedPeerOutputs = append(sortedPeerOutputs, [2]int{k + 1, receivedPeerOutputs[v]})
 			}
 
+			util.Infoln("Reconstructing with", sortedPeerOutputs)
 			currentVotes[v], err = shamir.ReconstructSecret(sortedPeerOutputs)
 			if err != nil {
 				util.Errorln("Could not reconstruct circuit output: ", err)
 			}
+
+			util.Infoln("Reconstructed", currentVotes[v])
 		}
 
 		util.Infoln(currentVotes)
 
 		// Eliminate worst candidate
 		var worstCandidate string
-		worstCandidateVotes := 99999
+		worstCandidateVotes := -1
 		for k, v := range currentVotes {
-			if v < worstCandidateVotes {
+			if v < worstCandidateVotes || worstCandidateVotes == -1 {
 				worstCandidate = k
 			}
 		}
@@ -301,4 +331,31 @@ func RunBGW() {
 			}
 		}
 	}
+}
+
+// getIRVVote gets the best vote for a given set of candidates
+func getIRVVote(currentCandidates []string, votes map[string]int) string {
+	orderedVotes := make([]string, len(votes))
+	for k, v := range votes {
+		orderedVotes[v-1] = k
+	}
+
+	// Find best vote for current candidates
+	var selected string
+	for _, v := range orderedVotes {
+		// Check that candidate voted for is a current candidate
+		for _, w := range currentCandidates {
+			if w == v {
+				selected = v
+				break
+			}
+		}
+
+		// If we have found the candidate then we are all good
+		if selected != "" {
+			break
+		}
+	}
+
+	return selected
 }
