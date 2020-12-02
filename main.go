@@ -230,8 +230,32 @@ func RunBGW() {
 		irvVote := getIRVVote(currentCandidates, localVotes)
 
 		for _, v := range currentCandidates {
+			// Synchronise peers using status
+			localStatus = "Tallying " + v
+			err := p2p.BroadcastMessage([]byte("StatusUpdate "+localStatus), 0)
+			if err != nil {
+				util.Errorf("Unable to broadcast status update: %v\n", err)
+			}
+
+			for {
+				var desynchronised bool
+				for _, v := range allVoters {
+					if v.Status != localStatus {
+						// Don't begin BGW if peers have not finished voting
+						desynchronised = true
+						break
+					}
+				}
+
+				if !desynchronised {
+					break
+				}
+			}
+
 			// Should we vote for this candidate?
 			shouldVote := 0
+			util.Infoln("Running tally for", v)
+			util.Infoln("IRV", irvVote)
 			if v == irvVote {
 				util.Infoln("Voting for candidate", v)
 				shouldVote = 1
@@ -278,7 +302,7 @@ func RunBGW() {
 			// Get output of circuit and broadcast
 			circuitOut := head.GetOutput()
 			util.Infoln("Broadcasting", fmt.Sprintf("MyOutput %v", circuitOut))
-			err := p2p.BroadcastMessage([]byte(fmt.Sprintf("MyOutput %v", circuitOut)), 0)
+			err = p2p.BroadcastMessage([]byte(fmt.Sprintf("MyOutput %v", circuitOut)), 0)
 			if err != nil {
 				util.Errorf("Unable to broadcast circuit output: %v\n", err)
 			}
@@ -310,6 +334,10 @@ func RunBGW() {
 			}
 
 			util.Infoln("Reconstructed", currentVotes[v])
+
+			// Clear all received maps to prevent bad results
+			receivedPeerOutputs = make(map[string]int)
+			receivedPeerShares = make(map[string][]int)
 		}
 
 		util.Infoln(currentVotes)
@@ -320,6 +348,7 @@ func RunBGW() {
 		for k, v := range currentVotes {
 			if v < worstCandidateVotes || worstCandidateVotes == -1 {
 				worstCandidate = k
+				worstCandidateVotes = currentVotes[k]
 			}
 		}
 
@@ -331,6 +360,9 @@ func RunBGW() {
 			}
 		}
 	}
+
+	util.Infoln("ELECTED CANDIDATES:")
+	util.Infoln(currentCandidates)
 }
 
 // getIRVVote gets the best vote for a given set of candidates
