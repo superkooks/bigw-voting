@@ -43,6 +43,8 @@ func listener(v *Voter) {
 			v.Status = strings.Join(msgSplit[1:], " ")
 			util.Infof("Peer %v is now %v\n", v.Peer.PeerAddress.IP.String(), v.Status)
 
+			ui.SetStatusOfPeer(v.Peer.PeerAddress.IP.String(), v.Status)
+
 			var dontBegin bool
 			for _, v := range allVoters {
 				if v.Status != "Voting Complete" {

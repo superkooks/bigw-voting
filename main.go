@@ -139,6 +139,8 @@ func main() {
 		externalIP = extIP
 	}
 
+	localStatus = "Voting InProgress"
+
 	p2p.Setup(externalIP, NewPeerCallback)
 
 	_, err = p2p.StartConnection(fmt.Sprintf("%v:%v", flagIntermediateIP, flagIntermediatePort), flagPeerIP)
@@ -146,8 +148,6 @@ func main() {
 		ui.Stop()
 		panic(err)
 	}
-
-	localStatus = "Voting InProgress"
 
 	// Wait for Ctrl-C
 	quit := make(chan os.Signal, 1)
@@ -165,21 +165,21 @@ func NewPeerCallback(p *p2p.Peer) {
 	// Start a goroutine (one per peer) for a listener
 	go listener(voter)
 
-	// Send our current status to the peer
-	err := p.SendMessage([]byte("StatusUpdate " + localStatus))
-	if err != nil {
-		util.Errorf("Unable to send message to %v, %v\n", p.PeerAddress.IP.String(), err)
-	}
-
 	// Verify votepack with new peer
 	util.Infoln("Verifying votepack with new peer")
 	hash := sha256.Sum256(votepack.Export())
-	err = p.SendMessage(append([]byte("VotepackVerify "), hash[:]...))
+	err := p.SendMessage(append([]byte("VotepackVerify "), hash[:]...))
 	if err != nil {
 		util.Errorf("Unable to send message to %v, %v\n", p.PeerAddress.IP.String(), err)
 	}
 
 	ui.AddPeerToList(p.PeerAddress.IP.String(), "Votepack Verified")
+
+	// Send our current status to the peer
+	err = p.SendMessage([]byte("StatusUpdate " + localStatus))
+	if err != nil {
+		util.Errorf("Unable to send message to %v, %v\n", p.PeerAddress.IP.String(), err)
+	}
 }
 
 // SubmitVotes is the callback for the instantFunoff voting submit button
