@@ -120,14 +120,13 @@ func (i *instantRunoff) InputHandler() func(event *tcell.EventKey, setFocus func
 					return
 				}
 
-				usedTransfers := make([]int, len(i.votes)+1)
-				for _, v := range i.votes {
-					if usedTransfers[v] == v {
-						i.currentStatus = "Votes are not transferrable"
-						return
+				for k, v := range i.votes {
+					for l, w := range i.votes {
+						if v == w && k != l {
+							i.currentStatus = "Votes are not transferrable"
+							return
+						}
 					}
-
-					usedTransfers[v] = v
 				}
 
 				for k, v := range i.allCandidates {
