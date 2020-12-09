@@ -176,19 +176,18 @@ func (i *instantRunoff) MouseHandler() func(action cview.MouseAction, event *tce
 				i.currentStatus = ""
 
 				voteMap := make(map[string]int)
-				usedTransfers := make([]int, len(i.votes)+1)
 				if len(i.votes) < len(i.allCandidates) {
 					i.currentStatus = "Please number every candidate"
 					return true, capture
 				}
 
-				for _, v := range i.votes {
-					if usedTransfers[v] == v {
-						i.currentStatus = "Votes are not transferrable"
-						return true, capture
+				for k, v := range i.votes {
+					for l, w := range i.votes {
+						if v == w && k != l {
+							i.currentStatus = "Votes are not transferrable"
+							return
+						}
 					}
-
-					usedTransfers[v] = v
 				}
 
 				for k, v := range i.allCandidates {
