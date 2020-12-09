@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strings"
+
 	"github.com/gdamore/tcell/v2"
 	"gitlab.com/tslocum/cview"
 )
@@ -34,8 +36,17 @@ func AddPeerToList(ip string, status string) {
 // SetStatusOfPeer sets the secondary text of the list item to status
 func SetStatusOfPeer(ip string, status string) {
 	for _, v := range plItems {
-		if v.GetMainText() == ip {
+		if strings.Split(v.GetMainText(), " ")[0] == ip {
 			v.SetSecondaryText(status)
+		}
+	}
+}
+
+// SetNickOfPeer sets the nickname of the peer
+func SetNickOfPeer(ip string, nick string) {
+	for _, v := range plItems {
+		if strings.Split(v.GetMainText(), " ")[0] == ip {
+			v.SetMainText(ip + " (" + nick + ")")
 		}
 	}
 }

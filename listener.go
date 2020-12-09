@@ -86,5 +86,10 @@ func listener(v *Voter) {
 			receivedPeerOutputs[v.Peer.PeerAddress.IP.String()] = conv
 			continue
 		}
+
+		if msgSplit[0] == "Nick" {
+			nick := strings.Join(msgSplit[1:], " ")
+			ui.SetNickOfPeer(v.Peer.PeerAddress.IP.String(), nick)
+		}
 	}
 }

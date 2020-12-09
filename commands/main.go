@@ -9,6 +9,7 @@ var commands = make(map[string]func([]string))
 // RegisterAll registers all the commands present using RegisterCommand
 func RegisterAll() {
 	RegisterCommand("connect", CommandConnect)
+	RegisterCommand("nick", CommandNick)
 }
 
 // RegisterCommand takes a name and a callback
