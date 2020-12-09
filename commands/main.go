@@ -10,6 +10,7 @@ var commands = make(map[string]func([]string))
 func RegisterAll() {
 	RegisterCommand("connect", CommandConnect)
 	RegisterCommand("nick", CommandNick)
+	RegisterCommand("loadTrustee", CommandLoadTrustee)
 }
 
 // RegisterCommand takes a name and a callback

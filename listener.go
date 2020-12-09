@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bigw-voting/commands"
 	"bigw-voting/ui"
 	"bigw-voting/util"
 	"crypto/sha256"
@@ -90,6 +91,41 @@ func listener(v *Voter) {
 		if msgSplit[0] == "Nick" {
 			nick := strings.Join(msgSplit[1:], " ")
 			ui.SetNickOfPeer(v.Peer.PeerAddress.IP.String(), nick)
+			continue
+		}
+
+		if msgSplit[0] == "TrusteeVote" {
+			trustee := strings.Join(msgSplit[1:], " ")
+
+			var found bool
+			for _, v := range votepack.TrusteeVotes {
+				if v == trustee {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				util.Errorf("Peer %v has been caught cheating. Attempted to add trustee vote not in votepack.\n", v.Peer.PeerAddress.IP.String())
+				continue
+			}
+
+			found = false
+			for _, v := range commands.AllTrusteeVotes {
+				if v == trustee {
+					found = true
+					break
+				}
+			}
+
+			if found {
+				util.Errorln("Peer %v has been caught cheating. Attempted to add trustee vote for person who already has trustee.\n", v.Peer.PeerAddress.IP.String())
+				continue
+			}
+
+			commands.AllTrusteeVotes = append(commands.AllTrusteeVotes, trustee)
+			util.Infof("Peer %v is trustee for %v\n", v.Peer.PeerAddress.IP.String(), trustee)
+			continue
 		}
 	}
 }

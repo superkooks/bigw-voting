@@ -29,13 +29,18 @@ var externalIP string
 
 func main() {
 	parseCommandline()
+	votepack = NewVotepackFromFile(flagVotepackFilename)
+	if flagTrusteeExport {
+		ExportTrusteeVote()
+	}
+
+	commands.VotepackTrustees = votepack.TrusteeVotes
 	commands.RegisterAll()
 
 	go ui.Start()
 	defer ui.Stop()
 
 	time.Sleep(100 * time.Millisecond)
-	votepack = NewVotepackFromFile(flagVotepackFilename)
 	ui.NewVote(votepack.Candidates, SubmitVotes)
 
 	// Find local IP for BGW as well as for UPNP mapping
@@ -156,7 +161,7 @@ func main() {
 }
 
 // NewPeerCallback serves as the callback for when new peers are connected.
-// It verifies the votepack is consistent.
+// It verifies the votepack is consistent and syncs trustee votes.
 func NewPeerCallback(p *p2p.Peer) {
 	// Create voter structure
 	voter := NewVoter(p)
@@ -179,6 +184,15 @@ func NewPeerCallback(p *p2p.Peer) {
 	err = p.SendMessage([]byte("StatusUpdate " + localStatus))
 	if err != nil {
 		util.Errorf("Unable to send message to %v, %v\n", p.PeerAddress.IP.String(), err)
+	}
+
+	// Update the peer with our trustee votes
+	for _, v := range commands.LocalTrusteeVotes {
+		err = p2p.BroadcastMessage([]byte("TrusteeVote "+v.Name), 0)
+		if err != nil {
+			util.Errorln(err)
+			return
+		}
 	}
 }
 
@@ -229,6 +243,13 @@ func RunBGW() {
 		sort.Strings(currentCandidates)
 		irvVote := getIRVVote(currentCandidates, localVotes)
 
+		// Pre-calculate trustee votes
+		trusteeVotes := make(map[string]int)
+		for _, v := range commands.LocalTrusteeVotes {
+			trusteeIRV := getIRVVote(currentCandidates, v.Votes)
+			trusteeVotes[trusteeIRV]++
+		}
+
 		for _, v := range currentCandidates {
 			// Synchronise peers using status
 			localStatus = "Tallying " + v
@@ -241,7 +262,6 @@ func RunBGW() {
 				var desynchronised bool
 				for _, v := range allVoters {
 					if v.Status != localStatus {
-						// Don't begin BGW if peers have not finished voting
 						desynchronised = true
 						break
 					}
@@ -262,7 +282,7 @@ func RunBGW() {
 			}
 
 			// Create BGW circuit
-			head, shares := bgw.NewVotingCircuit(shouldVote, externalIP, sortedPeerIPs)
+			head, shares := bgw.NewVotingCircuit(shouldVote+trusteeVotes[v], externalIP, sortedPeerIPs)
 
 			// Send shares to peers
 			for k, v := range shares {
@@ -341,6 +361,17 @@ func RunBGW() {
 		}
 
 		util.Infoln(currentVotes)
+
+		// Ensure that the number of votes does not exceed the number of peers + trustees + us
+		var numOfVotes int
+		for _, v := range currentVotes {
+			numOfVotes += v
+		}
+
+		if numOfVotes > len(p2p.GetAllPeerIPs())+len(commands.AllTrusteeVotes)+1 {
+			util.Errorln("A peer has voted twice! Number of votes exceeds the number of peer + trustees")
+			return
+		}
 
 		// Eliminate worst candidate
 		var worstCandidate string

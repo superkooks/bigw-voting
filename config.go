@@ -14,6 +14,8 @@ var (
 
 	flagLogFile bool
 	flagNoUPNP  bool
+
+	flagTrusteeExport bool
 )
 
 func parseCommandline() {
@@ -25,19 +27,23 @@ func parseCommandline() {
 	flag.BoolVar(&flagLogFile, "log", false, "Should messages be written to debug.log")
 	flag.BoolVar(&flagNoUPNP, "noUPNP", false, "Should the local intermediate server use UPNP port forwarding")
 
+	flag.BoolVar(&flagTrusteeExport, "exportTrusteeVote", false, "Export a new trustee vote")
+
 	flag.Parse()
 
 	// Check for config errors
-	if flagIntermediateIP == "" {
-		panic("intermediate IP address is a required flag")
-	}
-
-	if flagPeerIP == "" {
-		panic("peer IP address is a required flag")
-	}
-
 	if flagVotepackFilename == "" {
 		panic("a votepack must be specified")
+	}
+
+	if !flagTrusteeExport {
+		if flagIntermediateIP == "" {
+			panic("intermediate IP address is a required flag")
+		}
+
+		if flagPeerIP == "" {
+			panic("peer IP address is a required flag")
+		}
 	}
 
 	// Check whether we should start the debug log

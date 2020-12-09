@@ -9,9 +9,10 @@ import (
 	"os"
 )
 
-// Votepack represents a JSON-encoded pack of the candidates
+// Votepack represents a JSON-encoded pack of the candidates + trustee votes
 type Votepack struct {
-	Candidates []string
+	Candidates   []string
+	TrusteeVotes []string
 }
 
 // NewVotepackFromFile opens a file and loads the Votepack
