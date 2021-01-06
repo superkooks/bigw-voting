@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bigw-voting/ui"
 	"bigw-voting/util"
 	"encoding/json"
 	"fmt"
@@ -19,14 +18,12 @@ type Votepack struct {
 func NewVotepackFromFile(filename string) *Votepack {
 	f, err := os.Open(filename)
 	if err != nil {
-		ui.Stop()
 		panic(fmt.Errorf("unable to open votepack: %v", err))
 	}
 
 	defer f.Close()
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
-		ui.Stop()
 		panic(fmt.Errorf("unable to read votepack: %v", err))
 	}
 
@@ -38,7 +35,6 @@ func NewVotepackFromJSON(marshalled []byte) *Votepack {
 	v := new(Votepack)
 	err := json.Unmarshal(marshalled, v)
 	if err != nil {
-		ui.Stop()
 		panic(fmt.Errorf("unable to parse votepack: %v", err))
 	}
 
@@ -59,7 +55,6 @@ func (v *Votepack) Export() []byte {
 func (v *Votepack) ExportToFile(filename string) {
 	f, err := os.Create(filename)
 	if err != nil {
-		ui.Stop()
 		panic(err)
 	}
 
