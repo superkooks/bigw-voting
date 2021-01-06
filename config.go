@@ -20,12 +20,12 @@ var (
 
 func parseCommandline() {
 	flag.StringVarP(&flagIntermediateIP, "intermediateIP", "i", "", "The IPv4 address of the intermediate to connect through")
-	flag.IntVarP(&flagIntermediatePort, "intermediatePort", "o", 42069, "The UDP port of the intermediate to connect through, the default is 42069")
+	flag.IntVarP(&flagIntermediatePort, "intermediatePort", "o", 42069, "The UDP port of the intermediate to connect through")
 	flag.StringVarP(&flagPeerIP, "peerIP", "p", "", "The IPv4 address of the peer to begin connecting with")
 	flag.StringVarP(&flagVotepackFilename, "votepack", "v", "", "The filename of the votepack to use")
 
 	flag.BoolVar(&flagLogFile, "log", false, "Should messages be written to debug.log")
-	flag.BoolVar(&flagNoUPNP, "noUPNP", false, "Should the local intermediate server use UPNP port forwarding")
+	flag.BoolVar(&flagNoUPNP, "noUPNP", false, "Disable UPNP port forwarding")
 
 	flag.BoolVar(&flagTrusteeExport, "exportTrusteeVote", false, "Export a new trustee vote")
 
