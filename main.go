@@ -392,6 +392,13 @@ func RunBGW() {
 		}
 	}
 
+	localStatus = "Election Complete"
+	err := p2p.BroadcastMessage([]byte("StatusUpdate "+localStatus), 0)
+	if err != nil {
+		util.Errorf("Unable to broadcast status update: %v\n", err)
+	}
+
+	util.Infoln()
 	util.Infoln("ELECTED CANDIDATES:")
 	util.Infoln(currentCandidates)
 }
