@@ -2,6 +2,7 @@ package ui
 
 import (
 	"bigw-voting/commands"
+	"bigw-voting/util"
 	"fmt"
 	"io"
 	"log"
@@ -44,7 +45,12 @@ func consoleBox() *cview.Flex {
 
 	flex.AddItem(i, 1, 3, true)
 
-	log.SetOutput(t)
+	if util.DebugLog != nil {
+		log.SetOutput(io.MultiWriter(t, util.DebugLog))
+	} else {
+		log.SetOutput(t)
+	}
+
 	log.SetFlags(log.Ltime)
 
 	return flex

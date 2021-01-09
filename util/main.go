@@ -6,12 +6,13 @@ import (
 	"os"
 )
 
-var debugLog *os.File
+// DebugLog is the file to write logs to
+var DebugLog *os.File
 
 // SetDualLogging means log statements will print to console and be saved in debug.log
 func SetDualLogging() {
 	var err error
-	debugLog, err = os.Create("debug.log")
+	DebugLog, err = os.Create("debug.log")
 	if err != nil {
 		panic(err)
 	}
@@ -20,9 +21,8 @@ func SetDualLogging() {
 // Errorf prints a formatted error to the ui console
 func Errorf(fmtString string, fmtArgs ...interface{}) {
 	log.Printf("[red]error:[lime] %v", fmt.Sprintf(fmtString, fmtArgs...))
-	if debugLog != nil {
-		debugLog.WriteString(fmt.Sprint("error: ", fmt.Sprintf(fmtString, fmtArgs...)))
-		debugLog.Sync()
+	if DebugLog != nil {
+		DebugLog.Sync()
 	}
 }
 
@@ -30,18 +30,16 @@ func Errorf(fmtString string, fmtArgs ...interface{}) {
 func Errorln(msg ...interface{}) {
 	v := append([]interface{}{"[red]error:[lime]"}, msg...)
 	log.Println(v...)
-	if debugLog != nil {
-		debugLog.WriteString(fmt.Sprintln(append([]interface{}{"error:"}, msg...)...))
-		debugLog.Sync()
+	if DebugLog != nil {
+		DebugLog.Sync()
 	}
 }
 
 // Warnf prints a formatted warning to the ui console
 func Warnf(fmtString string, fmtArgs ...interface{}) {
 	log.Printf("[orange]warn:[lime] %v", fmt.Sprintf(fmtString, fmtArgs...))
-	if debugLog != nil {
-		debugLog.WriteString(fmt.Sprint("warn: ", fmt.Sprintf(fmtString, fmtArgs...)))
-		debugLog.Sync()
+	if DebugLog != nil {
+		DebugLog.Sync()
 	}
 }
 
@@ -49,29 +47,23 @@ func Warnf(fmtString string, fmtArgs ...interface{}) {
 func Warnln(msg ...interface{}) {
 	v := append([]interface{}{"[orange]warn:[lime]"}, msg...)
 	log.Println(v...)
-	if debugLog != nil {
-		debugLog.WriteString(fmt.Sprintln(append([]interface{}{"warn:"}, msg...)...))
-		debugLog.Sync()
+	if DebugLog != nil {
+		DebugLog.Sync()
 	}
 }
 
 // Infof prints a formatted Infoing to the ui console
 func Infof(fmtString string, fmtArgs ...interface{}) {
 	log.Printf(fmtString, fmtArgs...)
-	if debugLog != nil {
-		debugLog.WriteString(fmt.Sprintf(fmtString, fmtArgs...))
-		debugLog.Sync()
+	if DebugLog != nil {
+		DebugLog.Sync()
 	}
 }
 
 // Infoln prints text to the ui console
 func Infoln(msg ...interface{}) {
 	log.Println(msg...)
-	if debugLog != nil {
-		_, err := debugLog.WriteString(fmt.Sprintln(msg...))
-		if err != nil {
-			panic(err)
-		}
-		debugLog.Sync()
+	if DebugLog != nil {
+		DebugLog.Sync()
 	}
 }
