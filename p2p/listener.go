@@ -127,11 +127,13 @@ func listener() {
 			util.Infoln("Received broadcast packet, passing on to other peers")
 			util.Warnf("broadcast content: %v\n", string(msg.Data))
 			p.peerSeqNumber = msg.SequenceNumber
-			err := BroadcastMessage(msg.Data, msg.MaxBounces-1)
-			if err != nil {
-				util.Errorln(err)
-				continue
-			}
+
+			go func() {
+				err := BroadcastMessage(msg.Data, msg.MaxBounces-1)
+				if err != nil {
+					util.Errorln(err)
+				}
+			}()
 
 			util.Warnln("finished broadcast")
 		}

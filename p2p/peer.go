@@ -90,7 +90,7 @@ func StartConnection(intermediate string, newPeerIPString string) (*Peer, error)
 				return nil, err
 			}
 
-			time.Sleep(3 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 
 		if !newPeer.Established && i == 4 {
@@ -101,7 +101,7 @@ func StartConnection(intermediate string, newPeerIPString string) (*Peer, error)
 	GossipPeers(intermediate)
 
 	// Wait for all gossips to complete to ensure no overlapping sequence numbers
-	time.Sleep(3 * time.Second)
+	// time.Sleep(2 * time.Second)
 
 	newPeerCallback(newPeer)
 
