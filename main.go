@@ -115,6 +115,8 @@ func main() {
 		}
 	}
 
+	externalIP = flagExternalIP
+
 	// Find our public IP
 	if !util.IsPublicIP(externalIP) {
 		var extIP string
@@ -185,6 +187,15 @@ func NewPeerCallback(p *p2p.Peer) {
 	if err != nil {
 		util.Errorf("Unable to send message to %v, %v\n", p.PeerAddress.IP.String(), err)
 	}
+
+	// Update nick for new peer
+	// if commands.Nick != "" {
+	// 	err := p2p.BroadcastMessage([]byte("Nick "+commands.Nick), 0)
+	// 	if err != nil {
+	// 		util.Errorln(err)
+	// 		return
+	// 	}
+	// }
 
 	// Update the peer with our trustee votes
 	for _, v := range commands.LocalTrusteeVotes {
